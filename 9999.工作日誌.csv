@@ -1,6 +1,0 @@
-MM 	 DD 	 Description 	    Progress
-4	27	 將各系統改名成各模組 	 Ongoing
-4	27	 整理各模組功能，務必要把功能與資料接口整理得非常乾淨 	 Ongoing
-4	27	 設計data flow 	 Ongoing
-4	27	 設計系統架構：玩家的命令叫做系統，系統調用的功能叫做模組 	 Ongoing
-4	27	 研究信長野望各代各系統 	 Ongoing
