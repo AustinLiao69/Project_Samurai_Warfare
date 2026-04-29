@@ -12,3 +12,4 @@ MM       DD      Description        Progress
 4       29       建立文件瀏覽器伺服器（server.py，Port 5000，戰國風格UI）      Done
 4       29       建立replit.md專案說明文件      Done
 4       29       PM002新增Section 2「MVP總覽」（功能範圍、排除清單、M3通過條件），版本更新至v1.1      Done
+4       29       撰寫PM006.MVP_SRS（BA/SA/Architect/Programmer四角色合撰，含Use Case/系統規格/架構/實作規格）      Done
