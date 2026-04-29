@@ -1,6 +1,13 @@
-MM 	 DD 	 Description 	    Progress
-4	27	 將各系統改名成各模組 	 Ongoing
-4	27	 整理各模組功能，務必要把功能與資料接口整理得非常乾淨 	 Ongoing
-4	27	 設計data flow 	 Ongoing
-4	27	 設計系統架構：玩家的命令叫做系統，系統調用的功能叫做模組 	 Ongoing
-4	27	 研究信長野望各代各系統 	 Ongoing
+MM       DD      Description        Progress
+4       27       將各系統改名成各模組      Ongoing
+4       27       整理各模組功能，務必要把功能與資料接口整理得非常乾淨      Ongoing
+4       27       設計data flow     Ongoing
+4       27       設計系統架構：玩家的命令叫做系統，系統調用的功能叫做模組    Ongoing
+4       27       研究信長野望各代各系統     Ongoing
+4       29       撰寫PM001.專案章程（Project Charter）      Done
+4       29       撰寫PM002.開發藍圖與里程碑（30週計畫、7個Phase、Sprint分解）      Done
+4       29       撰寫PM003.風險管理計畫（12項風險、評估矩陣、應對措施）      Done
+4       29       撰寫PM004.完成定義與驗收標準（DoD三層、各模組AC、Bug分級）      Done
+4       29       撰寫PM005.技術架構說明（三層架構、資料結構、DataFlow、Git規範）      Done
+4       29       建立文件瀏覽器伺服器（server.py，Port 5000，戰國風格UI）      Done
+4       29       建立replit.md專案說明文件      Done
