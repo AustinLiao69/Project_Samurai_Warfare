@@ -1,6 +1,8 @@
 """
-PM008 MVP 初始資料 — 永祿三年・桶狹間前夕
-[重構] 一城一郡：castle 同時擁有 district 屬性，取消獨立 districts 陣列
+PM006 MVP 初始資料 — 永祿三年・桶狹間前夕
+[架構] 城（軍事設施）/ 郡（行政設施）分離，保持 1:1 對應
+  城 castle ── 軍事屬性：等級、守備、位置、鄰接
+  郡 district ── 行政屬性：類型、設施、年貢、家臣分封
 """
 
 # ── 評定議題池（8 主題輪換） ────────────────────────────────
@@ -9,6 +11,7 @@ COUNCIL_TOPICS = [
         "id": "ct_01",
         "title": "是否向今川家發動奇襲？",
         "desc": "今川義元率軍二萬五千沿東海道西進，清洲守備不足三千。各家老意見分歧，主公需作最終裁決。",
+        "cede_castle": None,
         "stances": {
             "shibatakatsuie": ("主戰派", "我軍雖寡，奇兵可以克敵。不戰而退，士氣必潰！", ["strike"]),
             "niwachoja":      ("主戰派", "桶狹間地勢崎嶇，若伏兵得當，可一擊制勝。",     ["strike"]),
@@ -27,7 +30,8 @@ COUNCIL_TOPICS = [
     {
         "id": "ct_02",
         "title": "今川義元遣使要求獻城",
-        "desc": "今川使者到訪，要求織田家獻出那古野城以示歸順。此辱難忍，但若拒絕恐激化衝突。",
+        "desc": "今川使者到訪，要求織田家獻出那古野城（含那古野郡）以示歸順。此辱難忍，但若拒絕恐激化衝突。",
+        "cede_castle": "castle_05",
         "stances": {
             "shibatakatsuie": ("強硬派", "獻城之事，有損主公威名！應即刻驅逐使者！",    ["reject"]),
             "niwachoja":      ("外交派", "可先虛與委蛇，爭取時間整備兵力。",            ["negotiate"]),
@@ -38,15 +42,16 @@ COUNCIL_TOPICS = [
             "hayashihidesada": ("謹慎",  "今川勢大，驟然對抗恐招禍端。",               ["negotiate"]),
         },
         "choices": [
-            {"id": "reject",    "label": "✕ 拒絕：驅逐使者",  "desc": "強硬宣示不服從"},
-            {"id": "negotiate", "label": "📜 談判：虛與委蛇",  "desc": "以外交爭取時間"},
-            {"id": "comply",    "label": "🤝 屈服：暫時妥協",  "desc": "保存實力，伺機再起"},
+            {"id": "reject",    "label": "✕ 拒絕：驅逐使者",   "desc": "強硬宣示不服從"},
+            {"id": "negotiate", "label": "📜 談判：虛與委蛇",   "desc": "以外交爭取時間"},
+            {"id": "comply",    "label": "🤝 屈服：獻出那古野城", "desc": "喪失那古野城與那古野郡"},
         ],
     },
     {
         "id": "ct_03",
         "title": "小牧山城守備兵力不足",
         "desc": "探子回報，小牧山城守備僅五百人。若敵軍繞路奇攻，恐難堅守，需調兵補防。",
+        "cede_castle": None,
         "stances": {
             "shibatakatsuie": ("主張補防", "小牧山城是北方屏障，一旦失守清洲門戶大開！", ["reinforce"]),
             "niwachoja":      ("中立",     "補防固然重要，但兵力分散亦有風險。",         []),
@@ -66,6 +71,7 @@ COUNCIL_TOPICS = [
         "id": "ct_04",
         "title": "商人提議開通津島新商路",
         "desc": "津島豪商提議從津島湊至熱田港開設新商路，每月可增收約 60 金，但需前期投資 200 金。",
+        "cede_castle": None,
         "stances": {
             "shibatakatsuie": ("反對",   "亂世之際，金錢當用於備兵！",                ["reject"]),
             "niwachoja":      ("支持",   "長遠之計，商路可持續挹注軍費。",            ["approve"]),
@@ -85,6 +91,7 @@ COUNCIL_TOPICS = [
         "id": "ct_05",
         "title": "熱田神宮請求修繕資助",
         "desc": "熱田神宮神官來訪，稱宮殿年久失修，請求織田家出資修繕。此舉可提升民心與家臣忠誠度。",
+        "cede_castle": None,
         "stances": {
             "shibatakatsuie": ("中立",   "神明庇佑固然重要，但當前軍費緊張。",        []),
             "niwachoja":      ("支持",   "資助神宮可提振尾張民心，對主公威望有益。",  ["donate"]),
@@ -104,6 +111,7 @@ COUNCIL_TOPICS = [
         "id": "ct_06",
         "title": "北方豪族犬山衆請求歸附",
         "desc": "尾張北方的犬山衆（兵力約 600）遣使求降，願以旗下土地歸順織田家，但要求封其家主為「部將」。",
+        "cede_castle": None,
         "stances": {
             "shibatakatsuie": ("支持",   "犬山衆若歸附可增強北方守備。",             ["accept"]),
             "niwachoja":      ("謹慎",   "投降者是否可靠？臣建議先派人調查。",       ["investigate"]),
@@ -123,6 +131,7 @@ COUNCIL_TOPICS = [
         "id": "ct_07",
         "title": "清洲城馬廄受損需修繕",
         "desc": "清洲城馬廄在上月的暴風雨中受損，騎馬部隊無法正常訓練，需撥款修繕以維持騎兵戰力。",
+        "cede_castle": None,
         "stances": {
             "shibatakatsuie": ("強烈支持", "騎馬乃野戰精銳，馬廄若廢，騎兵戰力大損！",  ["rebuild"]),
             "niwachoja":      ("支持",     "修繕費用不高，而戰力損失難以估量。",          ["rebuild"]),
@@ -142,6 +151,7 @@ COUNCIL_TOPICS = [
         "id": "ct_08",
         "title": "今川間諜潛入尾張",
         "desc": "密探來報，疑似有今川家臥底滲入清洲城附近，蒐集我方兵力情報。是否展開清查行動？",
+        "cede_castle": None,
         "stances": {
             "shibatakatsuie": ("強烈主張", "諜探之患不可輕視！應即刻大規模清查！",       ["purge"]),
             "niwachoja":      ("謹慎",     "清查固然必要，但大規模搜查易引起民心不安。",  ["quiet"]),
@@ -180,104 +190,142 @@ INITIAL_STATE = {
         },
     },
 
-    # ── 城（一城一郡：castle 同時持有 district 屬性） ─────────────
+    # ── 城（軍事設施）── 守備・等級・位置・鄰接 ─────────────────
     "castles": [
         # ────────── 尾張國・織田家 ──────────
         {
-            "id": "castle_01", "name": "清洲城",  "faction": "oda",
+            "id": "castle_01", "name": "清洲城", "faction": "oda",
             "level": 2, "garrison": 1500, "max_garrison": 2000,
             "province": "尾張國", "is_capital": True, "is_daimyo_home": True,
             "x": 32, "y": 46,
-            "type": "軍事郡", "facility_name": "兵營",
-            "facility_level": 2, "facility_max": 3,
-            "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "shibatakatsuie",
             "adjacent": ["castle_02", "castle_04", "castle_05"],
-            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+            "district_id": "district_01",
         },
         {
             "id": "castle_02", "name": "小牧山城", "faction": "oda",
             "level": 1, "garrison": 500, "max_garrison": 1000,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
             "x": 24, "y": 28,
-            "type": "軍事郡", "facility_name": "駐屯地",
-            "facility_level": 1, "facility_max": 3,
-            "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "niwachoja",
             "adjacent": ["castle_01", "castle_03"],
-            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+            "district_id": "district_02",
         },
         {
-            "id": "castle_03", "name": "犬山城",  "faction": "oda",
+            "id": "castle_03", "name": "犬山城", "faction": "oda",
             "level": 1, "garrison": 500, "max_garrison": 1000,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
             "x": 16, "y": 14,
-            "type": "軍事郡", "facility_name": "駐屯地",
-            "facility_level": 1, "facility_max": 3,
-            "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "sakumanobumori",
             "adjacent": ["castle_02"],
-            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+            "district_id": "district_03",
         },
         {
-            "id": "castle_04", "name": "津島湊",  "faction": "oda",
+            "id": "castle_04", "name": "津島湊", "faction": "oda",
             "level": 1, "garrison": 200, "max_garrison": 500,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
             "x": 14, "y": 60,
-            "type": "商業郡", "facility_name": "市集",
-            "facility_level": 1, "facility_max": 3,
-            "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "hayashihidesada",
             "adjacent": ["castle_01", "castle_05"],
-            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+            "district_id": "district_04",
         },
         {
             "id": "castle_05", "name": "那古野城", "faction": "oda",
             "level": 1, "garrison": 300, "max_garrison": 1000,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
             "x": 38, "y": 64,
+            "adjacent": ["castle_01", "castle_04", "castle_08"],
+            "district_id": "district_05",
+        },
+        # ────────── 三河國・今川家 ──────────
+        {
+            "id": "castle_06", "name": "岡崎城", "faction": "imagawa",
+            "level": 3, "garrison": 2000, "max_garrison": 4000,
+            "province": "三河國", "is_capital": True, "is_daimyo_home": False,
+            "x": 68, "y": 50,
+            "adjacent": ["castle_07", "castle_08"],
+            "district_id": "district_06",
+        },
+        {
+            "id": "castle_07", "name": "吉田城", "faction": "imagawa",
+            "level": 2, "garrison": 1000, "max_garrison": 2000,
+            "province": "三河國", "is_capital": False, "is_daimyo_home": False,
+            "x": 80, "y": 36,
+            "adjacent": ["castle_06"],
+            "district_id": "district_07",
+        },
+        {
+            "id": "castle_08", "name": "大高城", "faction": "imagawa",
+            "level": 1, "garrison": 800, "max_garrison": 1000,
+            "province": "三河國", "is_capital": False, "is_daimyo_home": False,
+            "x": 50, "y": 70,
+            "adjacent": ["castle_05", "castle_06"],
+            "district_id": "district_08",
+        },
+    ],
+
+    # ── 郡（行政設施）── 設施・年貢・家臣分封・農業 ──────────────
+    "districts": [
+        # ────────── 尾張國・織田家 ──────────
+        {
+            "id": "district_01", "name": "清洲郡", "castle_id": "castle_01",
+            "type": "軍事郡", "facility_name": "兵營",
+            "facility_level": 2, "facility_max": 3,
+            "building": False, "building_turns": 0,
+            "nengu_rate": 20, "retainer": "shibatakatsuie",
+            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+        },
+        {
+            "id": "district_02", "name": "小牧郡", "castle_id": "castle_02",
+            "type": "軍事郡", "facility_name": "駐屯地",
+            "facility_level": 1, "facility_max": 3,
+            "building": False, "building_turns": 0,
+            "nengu_rate": 20, "retainer": "niwachoja",
+            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+        },
+        {
+            "id": "district_03", "name": "犬山郡", "castle_id": "castle_03",
+            "type": "軍事郡", "facility_name": "駐屯地",
+            "facility_level": 1, "facility_max": 3,
+            "building": False, "building_turns": 0,
+            "nengu_rate": 20, "retainer": "sakumanobumori",
+            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+        },
+        {
+            "id": "district_04", "name": "津島郡", "castle_id": "castle_04",
+            "type": "商業郡", "facility_name": "市集",
+            "facility_level": 1, "facility_max": 3,
+            "building": False, "building_turns": 0,
+            "nengu_rate": 20, "retainer": "hayashihidesada",
+            "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
+        },
+        {
+            "id": "district_05", "name": "那古野郡", "castle_id": "castle_05",
             "type": "商業郡", "facility_name": "市集",
             "facility_level": 1, "facility_max": 3,
             "building": False, "building_turns": 0,
             "nengu_rate": 20, "retainer": "takigawakazumasu",
-            "adjacent": ["castle_01", "castle_04", "castle_08"],
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         # ────────── 三河國・今川家 ──────────
         {
-            "id": "castle_06", "name": "岡崎城",  "faction": "imagawa",
-            "level": 3, "garrison": 2000, "max_garrison": 4000,
-            "province": "三河國", "is_capital": True, "is_daimyo_home": False,
-            "x": 68, "y": 50,
+            "id": "district_06", "name": "岡崎郡", "castle_id": "castle_06",
             "type": "軍事郡", "facility_name": "軍陣營",
             "facility_level": 3, "facility_max": 3,
             "building": False, "building_turns": 0,
             "nengu_rate": 25, "retainer": "okabemotonobu",
-            "adjacent": ["castle_07", "castle_08"],
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
-            "id": "castle_07", "name": "吉田城",  "faction": "imagawa",
-            "level": 2, "garrison": 1000, "max_garrison": 2000,
-            "province": "三河國", "is_capital": False, "is_daimyo_home": False,
-            "x": 80, "y": 36,
+            "id": "district_07", "name": "吉田郡", "castle_id": "castle_07",
             "type": "農業郡", "facility_name": "農村",
             "facility_level": 2, "facility_max": 3,
             "building": False, "building_turns": 0,
             "nengu_rate": 25, "retainer": None,
-            "adjacent": ["castle_06"],
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
-            "id": "castle_08", "name": "大高城",  "faction": "imagawa",
-            "level": 1, "garrison": 800, "max_garrison": 1000,
-            "province": "三河國", "is_capital": False, "is_daimyo_home": False,
-            "x": 50, "y": 70,
+            "id": "district_08", "name": "大高郡", "castle_id": "castle_08",
             "type": "軍事郡", "facility_name": "駐屯地",
             "facility_level": 1, "facility_max": 3,
             "building": False, "building_turns": 0,
             "nengu_rate": 25, "retainer": "matsudasira",
-            "adjacent": ["castle_05", "castle_06"],
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
     ],
@@ -376,7 +424,6 @@ INITIAL_STATE = {
         },
     ],
 
-    # 家臣團（初始為空，由玩家自行組建）
     "corps": [],
 }
 
@@ -404,17 +451,17 @@ LOYALTY_GRADES = [
     (51,  70, "表面恭敬", "#3498db"),
     (31,  50, "意圖未明", "#e67e22"),
     (11,  30, "暗懷異志", "#e74c3c"),
-    (0,   10, "潛在叛徒", "#8e44ad"),
+    (0,   10, "叛意已決", "#922b21"),
 ]
 
-def loyalty_label(val):
+def loyalty_label(v):
     for lo, hi, label, _ in LOYALTY_GRADES:
-        if lo <= val <= hi:
+        if lo <= v <= hi:
             return label
     return "—"
 
-def loyalty_color(val):
+def loyalty_color(v):
     for lo, hi, _, color in LOYALTY_GRADES:
-        if lo <= val <= hi:
+        if lo <= v <= hi:
             return color
-    return "#888"
+    return "#555"
