@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="main">
+  <div class="page-content">
+    <div class="page-header">
+      <span class="page-title">政務選單</span>
+      <span style="font-size:0.8rem;color:var(--text-dim)">請選擇本月政令</span>
+    </div>
+
+    <div class="politics-grid">
+      {% for item in menu %}
+      {% if item.id == 9 %}
+      <div class="politics-card end-turn js-end-turn" style="cursor:pointer">
+        <span class="pc-icon">{{ item.icon }}</span>
+        <span class="pc-name">{{ item.name }}</span>
+      </div>
+      {% else %}
+      <div class="politics-card" onclick="toggleSub({{ item.id }})">
+        <div class="pc-icon">{{ item.icon }}</div>
+        <div class="pc-name">{{ item.name }}</div>
+        <div class="pc-sub" id="sub-{{ item.id }}" style="display:none">
+          {% for s in item.sub %}
+          <div>▸ {{ s }}</div>
+          {% endfor %}
+          {% if not item.sub %}<div style="color:#555">（本版本尚未開放）</div>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:1.5rem;padding:1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;font-size:0.78rem;color:var(--text-dim);max-width:900px">
+      提示：點擊各政務展開子選項。設施升級與年貢調整請從「天下地圖」頁面點擊郡名進行操作。
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleSub(id) {
+  const el = document.getElementById('sub-' + id);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

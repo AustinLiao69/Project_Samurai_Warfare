@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="main">
+
+  <!-- LEFT: FACTION HUD -->
+  <aside class="sidebar">
+    {% for fid, f in state.factions.items() %}
+    <div class="faction-card {{ fid }}">
+      <div class="fc-name">{{ f.name }}</div>
+      <div class="fc-stat"><span>金錢</span><span>{{ f.gold }} 金</span></div>
+      <div class="fc-stat"><span>軍糧</span><span>{{ f.military_supply }}</span></div>
+      <div class="fc-stat"><span>兵力</span>
+        <span>{{ oda_forces if fid=='oda' else imagawa_forces }}</span>
+      </div>
+      <div class="fc-stat"><span>城數</span>
+        <span>{{ state.castles | selectattr('faction','equalto',fid) | list | length }}</span>
+      </div>
+      <div class="force-bar-bg">
+        <div class="force-bar-fill" style="
+          width:{{ [(oda_forces if fid=='oda' else imagawa_forces) / ((oda_forces+imagawa_forces) or 1) * 100, 100] | min | int }}%;
+          background:{{ '#e74c3c' if fid=='oda' else '#2980b9' }};
+        "></div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- End Turn -->
+    <div style="padding:1rem;margin-top:auto;">
+      <button class="end-turn-btn js-end-turn">⏭ 結束回合</button>
+      <button onclick="resetGame()" style="width:100%;margin-top:0.5rem;padding:0.4rem;background:none;border:1px solid #333;color:var(--text-dim);font-family:inherit;font-size:0.72rem;cursor:pointer;border-radius:2px;">重置遊戲</button>
+    </div>
+  </aside>
+
+  <!-- CENTER: MAP -->
+  <div class="map-container">
+    <div class="map-svg-bg"></div>
+
+    <!-- Connection lines SVG -->
+    <svg class="map-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <!-- Castle connections (rough adjacency) -->
+      <line x1="28" y1="44" x2="62" y2="50" stroke="#3a2e1e" stroke-width="0.3"/>
+      <line x1="28" y1="44" x2="22" y2="30" stroke="#3a2e1e" stroke-width="0.3"/>
+      <line x1="62" y1="50" x2="75" y2="36" stroke="#3a2e1e" stroke-width="0.3"/>
+    </svg>
+
+    <div class="map-canvas">
+      {% for castle in state.castles %}
+      <div class="castle-node {{ castle.faction }}"
+           style="left:{{ castle.x }}%; top:{{ castle.y }}%"
+           title="{{ castle.name }}（{{ state.factions[castle.faction].name }}）">
+        {% if castle.is_capital %}
+        <span class="capital-star">★</span>
+        {% endif %}
+        <div class="castle-icon">
+          <span class="castle-level-badge">{{ castle.level }}</span>
+          🏯
+        </div>
+        <div class="castle-label">{{ castle.name }}</div>
+        <div class="castle-garrison">{{ castle.garrison }} 人</div>
+      </div>
+      {% endfor %}
+
+      <!-- District dots (clickable) -->
+      {% set dist_offsets = {
+        'dist_01': (36, 50), 'dist_02': (32, 38),
+        'dist_03': (16, 25), 'dist_04': (20, 38),
+        'dist_05': (55, 44), 'dist_06': (58, 58),
+        'dist_07': (72, 50), 'dist_08': (80, 42)
+      } %}
+      {% for d in state.districts %}
+      {% set castle = state.castles | selectattr('id','equalto',d.castle) | first %}
+      {% set offset = dist_offsets.get(d.id, (50,50)) %}
+      <div class="district-dot {{ castle.faction }}"
+           style="left:{{ offset[0] }}%; top:{{ offset[1] }}%"
+           data-district="{{ d.id }}"
+           title="{{ d.name }}（{{ d.type }}）—點擊查看詳情">
+      </div>
+      <div class="district-dot-label"
+           style="left:{{ offset[0] }}%; top:{{ offset[1] + 3 }}%;"
+           onclick="openDistrictModal('{{ d.id }}')">
+        {{ d.name }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- RIGHT: EVENT LOG + DISTRICT INFO -->
+  <aside class="right-panel">
+    <div class="rp-section">
+      <div class="rp-title">領地概況</div>
+      {% for castle in state.castles %}
+      {% if castle.faction == state.player_faction %}
+      <div class="rp-item">
+        <span class="rp-item-name">{{ castle.name }}</span>
+        <span class="rp-item-val">守 {{ castle.garrison }}</span>
+      </div>
+      {% for d in state.districts %}
+      {% if d.castle == castle.id %}
+      <div class="rp-item" style="padding-left:0.8rem;cursor:pointer" data-district="{{ d.id }}">
+        <span class="rp-item-name">└ {{ d.name }}</span>
+        <span class="rp-item-val">{{ d.nengu_rate }}%</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-title">最新消息</div>
+      <div id="event-log">
+        {% for entry in state.log[:8] %}
+        <div class="log-entry">{{ entry }}</div>
+        {% else %}
+        <div class="log-entry">永祿三年五月，天下動盪在即。</div>
+        {% endfor %}
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}

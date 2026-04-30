@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="main">
+  <div class="page-content">
+    <div class="page-header">
+      <span class="page-title">家臣一覽</span>
+    </div>
+
+    <div class="faction-tabs">
+      <a href="{{ url_for('retainers', faction_id='oda') }}"
+         class="ftab oda {{ 'active' if faction_id=='oda' }}">● 織田家</a>
+      <a href="{{ url_for('retainers', faction_id='imagawa') }}"
+         class="ftab imagawa {{ 'active' if faction_id=='imagawa' }}">● 今川家</a>
+    </div>
+
+    <table class="rtable">
+      <thead>
+        <tr>
+          <th>姓名</th><th>階級</th><th>家系</th><th>忠誠度</th>
+          <th>軍事</th><th>智謀</th><th>政治</th><th>魅力</th>
+          <th>兵力</th><th>知行地</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in retainers %}
+        <tr>
+          <td style="font-weight:700">{{ r.name }}</td>
+          <td><span class="rank-badge rank-{{ r.rank }}">{{ r.rank }}</span></td>
+          <td><span class="lineage-badge">{{ r.lineage }}</span></td>
+          <td>
+            {% if r.rank != '大名' %}
+            <span class="loyalty-dot" style="background:{{ loyalty_color(r.loyalty) }}"></span>
+            {{ r.loyalty_label }}
+            {% else %}—{% endif %}
+          </td>
+          {% for key in ['military','strategy','politics','charisma'] %}
+          {% set ev = r.eval[key] %}
+          <td>
+            <span class="eval-grade grade-{{ ev[0] }}">{{ ev[0] }}</span>
+            <span style="font-size:0.75rem;color:var(--text-dim)">{{ ev[1] }}</span>
+          </td>
+          {% endfor %}
+          <td>{{ r.forces }}</td>
+          <td style="font-size:0.78rem;color:var(--text-dim)">
+            {% if r.rank == '大名' %}（本城直轄）
+            {% else %}
+              {% for d in state.districts %}{% if d.retainer == r.id %}{{ d.name }}{% endif %}{% endfor %}
+              {% if not state.districts | selectattr('retainer','equalto',r.id) | list %}—{% endif %}
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div style="margin-top:1rem;font-size:0.75rem;color:var(--text-dim);padding:0.5rem 0;border-top:1px solid var(--border)">
+      評價等級說明（玩家僅見文字，不見數值）：
+      {% for g, label in [('S','最高境界'),('A','名將之才'),('B','頗有名聲'),('C','初露頭角'),('D','略有所長'),('E','不值一提')] %}
+      <span class="eval-grade grade-{{ g }}" style="margin-right:0.4rem">{{ g }}</span>{{ label }}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
