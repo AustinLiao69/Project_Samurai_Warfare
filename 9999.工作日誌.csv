@@ -52,4 +52,13 @@ MM       DD      Description        Progress
 4       30       Workflow 更新：指令改為 python3 '00.Documentation/0050.MVP/webapp/app.py'      Done
 4       30       Webapp 互動功能重構：依 PM006 UC-004/010/011/012/022 實作回合結算/郡詳情/設施升級/年貢調整/野戰      Done
 4       30       新增 game/logic.py（回合結算/資源計算/戰鬥公式）、data/initial.py（PM008 初始資料）      Done
-4       30       新增 static/js/game.js（AJAX 互動：End Turn / 郡 Modal / 升級 / 年貢 / 攻擊）      Done
+4       30       新增 static/js/game.js（AJAX 互動：End Turn / 郡 Modal / 升級 / 年貢 / 攻擊）      Done4	30	BUG FIX：CSS .district-dot-label 移除 pointer-events:none，修復 onclick 失效問題	Done
+4	30	BUG FIX：城節點（castle-node）加入 data-castle 屬性並綁定點擊事件，開啟城詳情 Modal（列出轄下郡縣）	Done
+4	30	BUG FIX：回合結算加入 Turn Result Overlay，結算後顯示本月事件摘要，取代無聲 location.reload	Done
+4	30	Phase 2 完成：UC-020/021 徵兵系統（城兵即時徵召 / 農民兵 1 月等待），app.py POST /api/mobilize 路由	Done
+4	30	Phase 3 完成：UC-023 圍城戰（resolve_siege 函數），/api/battle 加入 mode 參數支援 assault/siege	Done
+4	30	Phase 3 完成：存檔/讀檔功能（JS saveGame/loadGame 以 localStorage 實作），/api/load-state POST 路由	Done
+4	30	新增 /territory 頁面（領地管理卡片 Grid），提供更直觀的郡縣操作入口（詳情/年貢/徵兵）	Done
+4	30	新增 /api/castle/<cid> 路由，回傳城詳情及轄下郡列表，供 castle-modal 使用	Done
+4	30	base.html 新增 castle-modal（城詳情 Modal）和 turn-overlay（回合結算 Overlay）	Done
+4	30	全面更新 CSS：移除 pointer-events 問題、district-dot 放大至 18px、district-label 可點擊樣式	Done

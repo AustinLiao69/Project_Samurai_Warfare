@@ -17,75 +17,128 @@
   <div class="topbar-resources">
     <span class="res-item"><span class="res-label">金：</span><span class="res-value" id="hud-gold">{{ state.factions[state.player_faction].gold }}</span></span>
     <span class="res-item"><span class="res-label">軍糧：</span><span class="res-value" id="hud-supply">{{ state.factions[state.player_faction].military_supply }}</span></span>
-    <span class="res-item"><span class="res-label">勢力：</span><span class="res-value" style="color:{{ '#e74c3c' if state.player_faction=='oda' else '#2980b9' }}">{{ state.factions[state.player_faction].name }}</span></span>
+    <span class="res-item"><span class="res-label">勢力：</span>
+      <span class="res-value" style="color:{{ '#e74c3c' if state.player_faction=='oda' else '#2980b9' }}">{{ state.factions[state.player_faction].name }}</span>
+    </span>
   </div>
 </header>
 
 <!-- NAV -->
 <nav class="nav">
-  <a href="{{ url_for('index') }}"    class="{{ 'active' if active=='map' }}">☰ 天下地圖</a>
-  <a href="{{ url_for('retainers') }}" class="{{ 'active' if active=='retainers' }}">👤 家臣一覽</a>
-  <a href="{{ url_for('politics') }}"  class="{{ 'active' if active=='politics' }}">📜 政務選單</a>
-  <a href="{{ url_for('council') }}"   class="{{ 'active' if active=='council' }}">🏛 評定會議</a>
+  <a href="{{ url_for('index') }}"      class="{{ 'active' if active=='map' }}">☰ 天下地圖</a>
+  <a href="{{ url_for('territory') }}"  class="{{ 'active' if active=='territory' }}">🏘 領地管理</a>
+  <a href="{{ url_for('retainers') }}"  class="{{ 'active' if active=='retainers' }}">👤 家臣一覽</a>
+  <a href="{{ url_for('politics') }}"   class="{{ 'active' if active=='politics' }}">📜 政務選單</a>
+  <a href="{{ url_for('council') }}"    class="{{ 'active' if active=='council' }}">🏛 評定會議</a>
 </nav>
 
-<!-- PAGE BODY -->
 {% block body %}{% endblock %}
 
-<!-- DISTRICT DETAIL MODAL -->
+<!-- ══════════════════════════════════════════════════ -->
+<!-- MODAL A: DISTRICT DETAIL (UC-010/011/012/022/023) -->
+<!-- ══════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="district-modal">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title" id="dm-title">郡詳情</span>
-      <span class="modal-close" onclick="closeDistrictModal()">✕</span>
+      <button class="modal-close" onclick="closeDistrictModal()">✕</button>
     </div>
-    <div style="font-size:0.75rem;color:var(--text-dim);margin-top:-0.6rem;margin-bottom:0.8rem;" id="dm-type"></div>
+    <div style="font-size:0.75rem;color:var(--text-dim);margin-top:-0.6rem;margin-bottom:0.8rem" id="dm-type"></div>
 
-    <!-- Info Grid -->
+    <!-- Info -->
     <div class="modal-section">
       <div class="modal-label">基本資訊</div>
       <div class="info-grid">
         <div class="info-cell"><div class="info-cell-label">所屬城</div><div class="info-cell-val" id="dm-castle">—</div></div>
-        <div class="info-cell"><div class="info-cell-label">設施</div><div class="info-cell-val" id="dm-facility">—</div></div>
+        <div class="info-cell"><div class="info-cell-label">設施狀態</div><div class="info-cell-val" id="dm-facility">—</div></div>
         <div class="info-cell"><div class="info-cell-label">本月金收入</div><div class="info-cell-val" id="dm-gold-out">—</div></div>
         <div class="info-cell"><div class="info-cell-label">本月軍糧</div><div class="info-cell-val" id="dm-supply-out">—</div></div>
         <div class="info-cell" style="grid-column:1/-1"><div class="info-cell-label">管理家臣</div><div class="info-cell-val" id="dm-retainer">—</div></div>
       </div>
     </div>
 
-    <!-- Nengu Slider (UC-012) -->
-    <div class="modal-section" id="dm-nengu-section">
-      <div class="modal-label">年貢率調整（10%–60%）</div>
-      <div class="nengu-wrap">
-        <input type="range" class="nengu-slider" id="dm-nengu-slider" min="10" max="60" step="5" value="20">
-        <span class="nengu-val" id="dm-nengu-val">20%</span>
-      </div>
-      <div class="nengu-preview" id="dm-nengu-preview">預估本月收入：—</div>
-    </div>
-
-    <!-- Upgrade Card (UC-011) -->
-    <div class="modal-section" id="dm-upgrade-card">
-      <div class="modal-label">設施升級</div>
-      <div class="upgrade-card">
-        <div class="upgrade-info">
-          <div class="upgrade-name" id="dm-upgrade-name">—</div>
-          <div class="upgrade-meta" id="dm-upgrade-meta"></div>
+    <!-- PLAYER-ONLY: Nengu + Upgrade + Mobilize -->
+    <div id="dm-player-section">
+      <!-- Nengu (UC-012) -->
+      <div class="modal-section">
+        <div class="modal-label">年貢率調整（10%–60%）</div>
+        <div class="nengu-wrap">
+          <input type="range" class="nengu-slider" id="dm-nengu-slider" min="10" max="60" step="5" value="20">
+          <span class="nengu-val" id="dm-nengu-val">20%</span>
         </div>
-        <button class="btn-upgrade" id="dm-upgrade-btn">發出建設命令</button>
+        <div class="nengu-preview" id="dm-nengu-preview">預估本月金收入：—</div>
+      </div>
+
+      <!-- Upgrade (UC-011) -->
+      <div class="modal-section" id="dm-upgrade-card">
+        <div class="modal-label">設施升級</div>
+        <div class="upgrade-card">
+          <div class="upgrade-info">
+            <div class="upgrade-name" id="dm-upgrade-name">—</div>
+            <div class="upgrade-meta" id="dm-upgrade-meta"></div>
+          </div>
+          <button class="btn-upgrade" id="dm-upgrade-btn">發出建設命令</button>
+        </div>
+      </div>
+
+      <!-- Mobilize (UC-020/021) -->
+      <div class="modal-section" id="dm-mobilize-section">
+        <div class="modal-label">徵兵</div>
+        <div class="mobilize-row">
+          <button class="btn-mobilize" id="dm-city-btn">⚔ 城兵徵召（即時）</button>
+          <button class="btn-mobilize" id="dm-farmer-btn">🌾 農民兵（1月後）</button>
+        </div>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:0.3rem" id="dm-mobilize-status"></div>
       </div>
     </div>
 
-    <!-- Attack Section (UC-022) -->
+    <!-- ENEMY: Attack / Siege -->
     <div class="attack-section" id="dm-attack-section">
       <div class="modal-label" style="margin-bottom:0.5rem">軍事行動</div>
+      <div class="attack-mode-tabs">
+        <button class="attack-tab active" id="tab-assault" onclick="setAttackMode('assault')">⚔ 攻郡野戰</button>
+        <button class="attack-tab" id="tab-siege" onclick="setAttackMode('siege')">🏯 圍城戰</button>
+      </div>
+      <div id="dm-mode-desc" style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.5rem">
+        攻郡野戰：立即與守方決戰，勝者取得郡領地。
+      </div>
       <select class="attacker-select" id="dm-attacker-select"></select>
-      <button class="btn-attack" id="dm-attack-btn">⚔ 發動攻擊</button>
-      <!-- Battle Result -->
+      <button class="btn-attack" id="dm-attack-btn">⚔ 出兵</button>
       <div class="battle-result" id="dm-battle-result" style="display:none;margin-top:0.8rem">
         <div class="battle-result-title" id="dm-battle-result-title"></div>
         <div class="battle-summary" id="dm-battle-summary"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- MODAL B: CASTLE DETAIL (click on castle node)    -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="castle-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="cm-title">城詳情</span>
+      <button class="modal-close" onclick="closeCastleModal()">✕</button>
+    </div>
+    <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem" id="cm-meta"></div>
+    <div class="info-grid" style="margin-bottom:1rem">
+      <div class="info-cell"><div class="info-cell-label">城等級</div><div class="info-cell-val" id="cm-level">—</div></div>
+      <div class="info-cell"><div class="info-cell-label">守備兵力</div><div class="info-cell-val" id="cm-garrison">—</div></div>
+    </div>
+    <div class="modal-label">轄下郡縣</div>
+    <div class="castle-district-list" id="cm-district-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- TURN RESULT OVERLAY                              -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="turn-overlay" id="turn-overlay">
+  <div class="turn-overlay-box">
+    <div class="turn-overlay-title" id="turn-overlay-title">回合結算</div>
+    <div id="turn-overlay-log"></div>
+    <button class="turn-confirm-btn" onclick="closeTurnOverlay()">確認，繼續 ▶</button>
   </div>
 </div>
 
@@ -98,7 +151,6 @@
   </div>
 </footer>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script src="{{ url_for('static', filename='js/game.js') }}"></script>

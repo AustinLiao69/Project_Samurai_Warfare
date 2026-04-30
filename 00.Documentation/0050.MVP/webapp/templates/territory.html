@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="main">
+  <div class="page-content">
+    <div class="page-header">
+      <span class="page-title">領地管理</span>
+      <span style="font-size:0.8rem;color:var(--text-dim)">點擊郡名卡片管理設施・年貢・徵兵</span>
+    </div>
+
+    <div class="territory-grid">
+      {% for castle in player_castles %}
+      {% for d in castle_districts[castle.id] %}
+      <div class="territory-card" data-district="{{ d.id }}">
+        <div class="tc-header">
+          <span class="tc-name">{{ d.name }}</span>
+          <span class="tc-type">{{ d.type }}</span>
+        </div>
+        <div class="tc-castle-tag">🏯 {{ castle.name }}（Lv{{ castle.level }}）</div>
+
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">設施</span>
+          <span class="tc-stat-val">{{ d.facility_name }} Lv{{ d.facility_level }}/{{ d.facility_max }}</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">年貢率</span>
+          <span class="tc-stat-val">{{ d.nengu_rate }}%</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">本月金收入</span>
+          <span class="tc-stat-val">{{ outputs[d.id].gold }} 金</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">本月軍糧</span>
+          <span class="tc-stat-val">{{ outputs[d.id].supply }}</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">管理家臣</span>
+          <span class="tc-stat-val">
+            {% if d.retainer %}
+              {% for r in state.retainers %}{% if r.id == d.retainer %}{{ r.name }}{% endif %}{% endfor %}
+            {% else %}（未分封）{% endif %}
+          </span>
+        </div>
+
+        {% if d.building %}
+        <div class="tc-building-badge">🔨 建設中（{{ d.building_turns }} 月後完工）</div>
+        {% endif %}
+
+        <div class="tc-actions">
+          <button class="tc-btn" onclick="event.stopPropagation(); openDistrictModal('{{ d.id }}')">📋 詳情/升級</button>
+          <button class="tc-btn" onclick="event.stopPropagation(); openDistrictModal('{{ d.id }}')">年貢</button>
+          <button class="tc-btn" onclick="event.stopPropagation(); openDistrictModal('{{ d.id }}')">⚔ 徵兵</button>
+        </div>
+      </div>
+      {% endfor %}
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;align-items:center">
+      <button class="end-turn-btn js-end-turn" style="width:auto;padding:0.6rem 2rem">⏭ 結束回合</button>
+      <button onclick="saveGame()" style="padding:0.6rem 1rem;background:rgba(201,162,39,0.1);border:1px solid var(--border-hi);color:var(--text-gold);font-family:inherit;font-size:0.85rem;cursor:pointer;border-radius:2px">💾 存檔</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
