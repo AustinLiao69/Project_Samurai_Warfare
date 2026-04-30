@@ -4,107 +4,156 @@
   <div class="page-content">
     <div class="page-header">
       <span class="page-title">評定會議</span>
-      <span style="font-size:0.8rem;color:var(--text-dim)">家老評議・大名裁決</span>
+      <span style="font-size:0.8rem;color:var(--text-dim)">家老評議・大名裁決　第 {{ state.turn }} 回合</span>
     </div>
 
     <div class="council-layout">
-      <!-- LEFT: topic + stances -->
+      <!-- LEFT: 議題 + 立場列表 -->
       <div>
         <div class="council-topic">
-          <div class="ct-label">本月議題</div>
-          <div class="ct-title">是否向今川家發動攻勢？</div>
-          <div class="ct-desc">
-            今川義元正率大軍沿東海道西進，傳言兵力達二萬五千。清洲守備軍不足三千。
-            各家老意見分歧，大名需作最終裁決。
-          </div>
+          <div class="ct-label">本月議題 {{ state.turn }}/{{ topics_total }}</div>
+          <div class="ct-title">{{ topic.title }}</div>
+          <div class="ct-desc">{{ topic.desc }}</div>
         </div>
 
         <div class="stance-list" id="stance-list">
-          {% set stances = [
-            ('柴田勝家', '宿老', '主戰派', '我軍雖寡，奇兵可以克敵。不戰而退，士氣必潰。', '#e74c3c'),
-            ('丹羽長秀', '家老', '主戰派', '今川主力在道路崎嶇之處，若伏兵得當，可一擊制勝。', '#e74c3c'),
-            ('木下藤吉郎', '家老', '待機派', '主公，請容我先探明敵情，再定攻守之策。', '#95a5a6'),
-            ('前田利家', '部將', '待機派', '末將謹遵主公之命，但兵力確實懸殊。', '#95a5a6'),
-          ] %}
-          {% for name, rank, stance, opinion, color in stances %}
+          {% for r in council_retainers %}
+          {% set stance_data = topic.stances.get(r.id, ('中立', '（未表態）', [])) %}
+          {% set stance_label = stance_data[0] %}
+          {% set stance_opinion = stance_data[1] %}
           <div class="stance-item">
-            <div>
-              <div class="si-name">{{ name }}<span class="si-rank" style="margin-left:0.5rem">{{ rank }}</span></div>
-              <div class="si-opinion">「{{ opinion }}」</div>
+            <div style="flex:1">
+              <div class="si-name">
+                {{ r.name }}
+                <span class="si-rank" style="margin-left:0.5rem">{{ r.rank }}</span>
+              </div>
+              <div class="si-opinion">「{{ stance_opinion }}」</div>
             </div>
-            <span class="stance-tag {{ 'stance-agree' if stance=='主戰派' else 'stance-neutral' }}">{{ stance }}</span>
+            <span class="stance-tag
+              {%- if '戰' in stance_label or '強硬' in stance_label or '支持' in stance_label or '主張' in stance_label %} stance-agree
+              {%- elif '謹慎' in stance_label or '外交' in stance_label or '中立' in stance_label %} stance-neutral
+              {%- else %} stance-oppose
+              {%- endif %}">{{ stance_label }}</span>
           </div>
           {% endfor %}
         </div>
       </div>
 
-      <!-- RIGHT: summary + decision -->
+      <!-- RIGHT: 裁決 -->
       <div>
-        <div class="council-summary">
-          <div class="cs-title">評議結果</div>
-          <div class="stance-bar">
-            <div class="sb-label"><span>主戰派</span><span>2/4</span></div>
-            <div class="sb-track">
-              <div class="sb-agree"  style="width:50%"></div>
-              <div class="sb-neutral"style="width:50%"></div>
+        <div class="council-summary" id="council-summary">
+          <div class="cs-title">大名裁決</div>
+
+          {% if state.council_decision %}
+          <!-- 本月已裁決 -->
+          <div style="background:rgba(39,174,96,0.1);border:1px solid #27ae60;border-radius:4px;padding:0.8rem;margin-bottom:1rem">
+            <div style="color:#27ae60;font-size:0.88rem;font-weight:700">✓ 本月裁決已下達</div>
+            <div style="font-size:0.82rem;color:var(--text-dim);margin-top:0.3rem">
+              {{ state.council_decision.label }}
             </div>
           </div>
-          <div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.8rem;line-height:1.8">
-            2 名家老支持出兵，2 名持保留意見。<br>
-            最終裁決由大名親定。
+          {% else %}
+          <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.8">
+            裁決將影響家臣忠誠度。<br>支持者忠誠度 <span style="color:#27ae60">+3</span>，反對者 <span style="color:#e74c3c">-2</span>。
+          </div>
+          {% endif %}
+
+          <div class="decision-btns" id="decision-btns">
+            {% for choice in topic.choices %}
+            <button class="btn btn-council-choice
+              {%- if loop.index == 1 %} btn-execute
+              {%- elif loop.index == 2 %} btn-veto
+              {%- else %} btn-neutral
+              {%- endif %}"
+              onclick="makeDecision('{{ choice.id }}', '{{ choice.label }}')"
+              {% if state.council_decision %}disabled{% endif %}>
+              {{ choice.label }}
+              <span class="choice-desc"> — {{ choice.desc }}</span>
+            </button>
+            {% endfor %}
           </div>
 
-          <div class="decision-btns">
-            <button class="btn btn-execute" id="btn-attack-council">
-              ⚔ 裁決：出兵迎擊
-            </button>
-            <button class="btn btn-veto" id="btn-defend-council">
-              🏯 裁決：固守清洲
-            </button>
-            <button class="btn" style="background:rgba(149,165,166,0.1);color:#95a5a6;border:1px solid #555" id="btn-delay-council">
-              ⏳ 延議：再等一月
-            </button>
+          <!-- 忠誠度變化結果 -->
+          <div id="loyalty-result" style="display:none;margin-top:1rem;padding:0.8rem;background:var(--bg-card);border:1px solid var(--border);border-radius:4px">
+            <div class="cs-title">裁決影響</div>
+            <div id="loyalty-result-list"></div>
           </div>
         </div>
 
+        <!-- 回合資源 -->
         <div style="margin-top:1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1rem">
           <div class="cs-title">回合資源</div>
           <div style="font-size:0.82rem;color:var(--text-dim);line-height:2">
             金錢：{{ state.factions[state.player_faction].gold }} 金<br>
             軍糧：{{ state.factions[state.player_faction].military_supply }}<br>
-            總兵力：約
+            總兵力：
             {% set total = namespace(v=0) %}
             {% for r in state.retainers %}{% if r.faction == state.player_faction %}{% set total.v = total.v + r.forces %}{% endif %}{% endfor %}
-            {{ total.v }} 人
+            約 {{ total.v }} 人
           </div>
+        </div>
+
+        <!-- 進入下一階段 -->
+        <div style="margin-top:1rem">
+          <button class="end-turn-btn js-end-turn" style="font-size:0.85rem">⏭ 結束本月回合</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-document.getElementById('btn-attack-council').addEventListener('click', function() {
-  showToast('裁決已定：出兵迎擊今川！（請至地圖選擇目標郡發動攻擊）');
-  this.textContent = '✓ 已裁決：出兵';
-  this.disabled = true;
-});
-document.getElementById('btn-defend-council').addEventListener('click', function() {
-  showToast('裁決已定：固守清洲，以逸待勞。');
-  this.textContent = '✓ 已裁決：固守';
-  this.disabled = true;
-});
-document.getElementById('btn-delay-council').addEventListener('click', async function() {
-  this.textContent = '推進一月…';
-  this.disabled = true;
-  const res = await fetch('/api/end-turn', {method:'POST'});
-  const data = await res.json();
-  if (data.ok) {
-    updateHUD(data.state);
-    showToast('時間推進：' + data.state.date.year + '年' + data.state.date.month + '月');
-    setTimeout(() => location.reload(), 1200);
+const TOPIC_STANCES = {{ topic_stances_json | tojson }};
+
+async function makeDecision(choiceId, choiceLabel) {
+  const btns = document.querySelectorAll('.btn-council-choice');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    const res = await fetch('/api/council-decision', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ topic_id: '{{ topic.id }}', choice_id: choiceId, choice_label: choiceLabel }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      showToast('裁決已下達：' + choiceLabel);
+
+      // 顯示忠誠度變化
+      const resultEl = document.getElementById('loyalty-result');
+      const listEl   = document.getElementById('loyalty-result-list');
+      if (data.loyalty_changes && data.loyalty_changes.length) {
+        listEl.innerHTML = data.loyalty_changes.map(c => {
+          const sign  = c.delta > 0 ? '+' : '';
+          const color = c.delta > 0 ? '#27ae60' : c.delta < 0 ? '#e74c3c' : '#95a5a6';
+          return `<div style="font-size:0.82rem;padding:0.25rem 0;border-bottom:1px solid #1e1e1e">
+            ${c.name}：${c.before_label} → ${c.after_label}
+            <span style="color:${color};margin-left:0.5rem">${sign}${c.delta}</span>
+          </div>`;
+        }).join('');
+        resultEl.style.display = '';
+      }
+
+      // 標記已裁決
+      const summary = document.getElementById('council-summary');
+      const badge = document.createElement('div');
+      badge.style = 'background:rgba(39,174,96,0.1);border:1px solid #27ae60;border-radius:4px;padding:0.8rem;margin-bottom:1rem';
+      badge.innerHTML = `<div style="color:#27ae60;font-size:0.88rem;font-weight:700">✓ 裁決已下達</div>
+        <div style="font-size:0.82rem;color:var(--text-dim);margin-top:0.3rem">${choiceLabel}</div>`;
+      summary.insertBefore(badge, document.getElementById('decision-btns'));
+
+      updateHUD(data.state);
+    } else {
+      showToast('裁決失敗：' + data.msg);
+      btns.forEach(b => b.disabled = false);
+    }
+  } catch(e) {
+    showToast('裁決失敗：' + e.message);
+    btns.forEach(b => b.disabled = false);
   }
-});
+}
 </script>
 {% endblock %}

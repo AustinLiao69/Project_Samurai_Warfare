@@ -322,3 +322,58 @@ def resolve_siege(attacker, defender):
         "attacker_name":attacker["name"],
         "defender_name":defender["name"],
     }
+
+
+# ────────────────────────────────────────────────────
+# 8. 評定裁決忠誠度影響（Feedback 3）
+# ────────────────────────────────────────────────────
+
+def apply_council_decision(state, topic, choice_id):
+    """
+    根據裁決 choice_id 與各武將立場調整忠誠度。
+    topic.stances = {retainer_id: (stance_label, comment, agree_with_choices[])}
+    - 裁決在 agree_with 中 → 忠誠度 +3
+    - 裁決不在 agree_with 且立場非中立 → 忠誠度 -2
+    - 延議（choice_id == 'delay'）→ 所有人 -1
+    - 中立（agree_with == []）→ 不受影響
+    返回 (new_state, changes[])
+    """
+    changes = []
+    pf      = state["player_faction"]
+
+    for r in state["retainers"]:
+        if r["faction"] != pf or r["rank"] == "大名":
+            continue
+
+        stance_data  = topic["stances"].get(r["id"])
+        if not stance_data:
+            continue
+
+        stance_label, comment, agree_with = stance_data
+        is_neutral   = (agree_with == [])
+        old_loyalty  = r["loyalty"]
+        old_label    = loyalty_label(old_loyalty)
+
+        if choice_id == "delay":
+            delta = -1 if not is_neutral else 0
+        elif choice_id in agree_with:
+            delta = +3
+        elif not is_neutral:
+            delta = -2
+        else:
+            delta = 0
+
+        if delta != 0:
+            r["loyalty"]       = max(0, min(100, old_loyalty + delta))
+            r["loyalty_label"] = loyalty_label(r["loyalty"])
+            changes.append({
+                "name":         r["name"],
+                "delta":        delta,
+                "before_label": old_label,
+                "after_label":  r["loyalty_label"],
+            })
+            state["log"].insert(0,
+                f"【裁決影響】{r['name']} 忠誠度 {delta:+d}（{old_label} → {r['loyalty_label']}）")
+
+    state["log"] = state["log"][:20]
+    return state, changes

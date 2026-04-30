@@ -2,45 +2,134 @@
 {% block body %}
 <div class="main">
   <div class="page-content">
-    <div class="page-header">
-      <span class="page-title">政務選單</span>
-      <span style="font-size:0.8rem;color:var(--text-dim)">請選擇本月政令</span>
-    </div>
 
-    <div class="politics-grid">
-      {% for item in menu %}
-      {% if item.id == 9 %}
-      <div class="politics-card end-turn js-end-turn" style="cursor:pointer">
-        <span class="pc-icon">{{ item.icon }}</span>
-        <span class="pc-name">{{ item.name }}</span>
-      </div>
-      {% else %}
-      <div class="politics-card" onclick="toggleSub({{ item.id }})">
-        <div class="pc-icon">{{ item.icon }}</div>
-        <div class="pc-name">{{ item.name }}</div>
-        <div class="pc-sub" id="sub-{{ item.id }}" style="display:none">
-          {% for s in item.sub %}
-          <div>▸ {{ s }}</div>
-          {% endfor %}
-          {% if not item.sub %}<div style="color:#555">（本版本尚未開放）</div>{% endif %}
+    <!-- 直臣對話式政務選單（Feedback 5） -->
+    <div class="politics-dialogue-layout">
+
+      <!-- LEFT: 直臣立繪 + 對話框 -->
+      <div class="advisor-panel">
+        <div class="advisor-portrait-box">
+          <div class="advisor-portrait-inner">
+            <div class="advisor-kanji">家</div>
+            <div class="advisor-mon">✦</div>
+          </div>
+          <div class="advisor-name-plate">
+            <div class="adv-name" id="adv-name">{{ advisor.name }}</div>
+            <div class="adv-rank">{{ advisor.rank }}　{{ advisor.lineage }}臣</div>
+          </div>
+        </div>
+
+        <div class="advisor-dialogue" id="adv-dialogue">
+          「主公，本月欲作何事？請示下。」
+        </div>
+
+        <div class="advisor-loyalty-bar">
+          <span style="font-size:0.7rem;color:var(--text-dim)">忠誠度</span>
+          <div style="flex:1;height:4px;background:#2a2a2a;border-radius:2px;margin:0 0.5rem">
+            <div style="height:4px;border-radius:2px;background:{{ loyalty_color(advisor.loyalty) }};width:{{ advisor.loyalty }}%"></div>
+          </div>
+          <span style="font-size:0.7rem;color:{{ loyalty_color(advisor.loyalty) }}">{{ advisor.loyalty_label }}</span>
+        </div>
+
+        <!-- 回合資訊 -->
+        <div class="advisor-state-box">
+          <div class="asb-row"><span>金錢</span><span style="color:var(--gold-light)">{{ state.factions[state.player_faction].gold }} 金</span></div>
+          <div class="asb-row"><span>軍糧</span><span>{{ state.factions[state.player_faction].military_supply }}</span></div>
+          <div class="asb-row"><span>回合</span><span>第 {{ state.turn }} 月</span></div>
         </div>
       </div>
-      {% endif %}
-      {% endfor %}
-    </div>
 
-    <div style="margin-top:1.5rem;padding:1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;font-size:0.78rem;color:var(--text-dim);max-width:900px">
-      提示：點擊各政務展開子選項。設施升級與年貢調整請從「天下地圖」頁面點擊郡名進行操作。
+      <!-- RIGHT: 指令選單 -->
+      <div class="politics-command-panel">
+        <div class="pcp-title">■ 本月政令</div>
+
+        <!-- Category grid -->
+        <div id="cat-grid">
+          {% for cat in categories %}
+          <div class="cmd-card {{ 'cmd-endturn' if cat.id == 'endturn' }}"
+               onclick="selectCategory('{{ cat.id }}')">
+            <div class="cmd-icon">{{ cat.icon }}</div>
+            <div class="cmd-name">{{ cat.name }}</div>
+            <div class="cmd-hint">{{ cat.hint }}</div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Sub-options panel (shown after category click) -->
+        <div id="sub-panel" style="display:none">
+          <button class="back-btn" onclick="showCategories()">◀ 返回選單</button>
+          <div class="sub-cat-title" id="sub-cat-title"></div>
+          <div id="sub-option-list"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-function toggleSub(id) {
-  const el = document.getElementById('sub-' + id);
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+const CATEGORIES = {{ categories_json | tojson }};
+
+const ADV_LINES = {
+  default:    '「主公，本月欲作何事？請示下。」',
+  military:   '「武力乃亂世之根本。本月軍事布置，主公有何決斷？」',
+  territory:  '「民富則兵強。領地建設之事，請主公指示。」',
+  retainer:   '「家臣乃主公手足，人事安排一旦有失，大事難成。」',
+  diplomacy:  '「縱橫合縱，在此亂世亦不可缺。外交之事如何？」',
+  intel:      '「知己知彼，方能百戰不殆。情報之事，主公如何定奪？」',
+  council:    '「召集眾臣共議，聽取眾意而後裁決——此乃明主之道。」',
+  ceremony:   '「禮儀乃天下之本，民心向背亦賴於此。」',
+  postwar:    '「勝戰之後，妥善處置，方可鞏固戰果。」',
+  endturn:    '「如此，本月政務已畢。進入下一回合，請主公準備。」',
+};
+
+function selectCategory(id) {
+  if (id === 'endturn') {
+    document.getElementById('adv-dialogue').textContent = ADV_LINES.endturn;
+    endTurn();
+    return;
+  }
+  const cat = CATEGORIES.find(c => c.id === id);
+  if (!cat) return;
+
+  document.getElementById('adv-dialogue').textContent = ADV_LINES[id] || ADV_LINES.default;
+  document.getElementById('sub-cat-title').textContent = cat.icon + ' ' + cat.name;
+
+  const listEl = document.getElementById('sub-option-list');
+  listEl.innerHTML = '';
+
+  cat.subs.forEach(sub => {
+    const btn = document.createElement('div');
+    btn.className = 'sub-option-btn' + (sub.enabled ? '' : ' sub-disabled');
+    btn.innerHTML = `
+      <div class="sob-name">${sub.name}</div>
+      <div class="sob-desc">${sub.desc}</div>
+      ${sub.enabled ? '' : '<div class="sob-na">（本版本尚未開放）</div>'}
+    `;
+    if (sub.enabled) {
+      btn.onclick = () => handleSubAction(sub);
+    }
+    listEl.appendChild(btn);
+  });
+
+  document.getElementById('cat-grid').style.display = 'none';
+  document.getElementById('sub-panel').style.display = '';
+}
+
+function showCategories() {
+  document.getElementById('cat-grid').style.display = '';
+  document.getElementById('sub-panel').style.display = 'none';
+  document.getElementById('adv-dialogue').textContent = ADV_LINES.default;
+}
+
+function handleSubAction(sub) {
+  if (sub.url) {
+    window.location.href = sub.url;
+  } else if (sub.toast) {
+    showToast(sub.toast);
+  }
 }
 </script>
 {% endblock %}

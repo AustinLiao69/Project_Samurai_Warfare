@@ -6,59 +6,278 @@
       <span class="page-title">家臣一覽</span>
     </div>
 
-    <div class="faction-tabs">
-      <a href="{{ url_for('retainers', faction_id='oda') }}"
-         class="ftab oda {{ 'active' if faction_id=='oda' }}">● 織田家</a>
-      <a href="{{ url_for('retainers', faction_id='imagawa') }}"
-         class="ftab imagawa {{ 'active' if faction_id=='imagawa' }}">● 今川家</a>
+    <!-- 切換 tab: 家臣列表 / 家臣團管理 -->
+    <div class="faction-tabs" style="margin-bottom:1rem">
+      <button class="ftab {{ 'active oda' if tab=='retainers' }}" onclick="showTab('retainers')">👤 家臣一覽</button>
+      {% if faction_id == 'oda' %}
+      <button class="ftab {{ 'active oda' if tab=='corps' }}" onclick="showTab('corps')">⚔ 家臣團管理</button>
+      {% endif %}
+      <div style="margin-left:auto;display:flex;gap:0.5rem">
+        <a href="{{ url_for('retainers', faction_id='oda') }}"
+           class="ftab oda {{ 'active' if faction_id=='oda' }}">● 織田家</a>
+        <a href="{{ url_for('retainers', faction_id='imagawa') }}"
+           class="ftab imagawa {{ 'active' if faction_id=='imagawa' }}">● 今川家</a>
+      </div>
     </div>
 
-    <table class="rtable">
-      <thead>
-        <tr>
-          <th>姓名</th><th>階級</th><th>家系</th><th>忠誠度</th>
-          <th>軍事</th><th>智謀</th><th>政治</th><th>魅力</th>
-          <th>兵力</th><th>知行地</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for r in retainers %}
-        <tr>
-          <td style="font-weight:700">{{ r.name }}</td>
-          <td><span class="rank-badge rank-{{ r.rank }}">{{ r.rank }}</span></td>
-          <td><span class="lineage-badge">{{ r.lineage }}</span></td>
-          <td>
-            {% if r.rank != '大名' %}
-            <span class="loyalty-dot" style="background:{{ loyalty_color(r.loyalty) }}"></span>
-            {{ r.loyalty_label }}
-            {% else %}—{% endif %}
-          </td>
-          {% for key in ['military','strategy','politics','charisma'] %}
-          {% set ev = r.eval[key] %}
-          <td>
-            <span class="eval-grade grade-{{ ev[0] }}">{{ ev[0] }}</span>
-            <span style="font-size:0.75rem;color:var(--text-dim)">{{ ev[1] }}</span>
-          </td>
+    <!-- TAB A: 家臣列表 -->
+    <div id="tab-retainers">
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>姓名</th><th>階級</th><th>家系</th><th>忠誠度</th>
+            <th>軍事</th><th>智謀</th><th>政治</th><th>魅力</th>
+            <th>兵力</th><th>知行地 / 家臣團</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in retainers %}
+          {% set corps_info = corps_map.get(r.id) %}
+          <tr>
+            <td style="font-weight:700">
+              {{ r.name }}
+              {% if corps_info and corps_info.is_leader %}
+              <span style="font-size:0.68rem;color:var(--gold);margin-left:0.3rem">[首領]</span>
+              {% endif %}
+            </td>
+            <td><span class="rank-badge rank-{{ r.rank }}">{{ r.rank }}</span></td>
+            <td><span class="lineage-badge">{{ r.lineage }}</span></td>
+            <td>
+              {% if r.rank != '大名' %}
+              <span class="loyalty-dot" style="background:{{ loyalty_color(r.loyalty) }}"></span>
+              {{ r.loyalty_label }}
+              {% else %}—{% endif %}
+            </td>
+            {% for key in ['military','strategy','politics','charisma'] %}
+            {% set ev = r.eval[key] %}
+            <td>
+              <span class="eval-grade grade-{{ ev[0] }}">{{ ev[0] }}</span>
+              <span style="font-size:0.75rem;color:var(--text-dim)">{{ ev[1] }}</span>
+            </td>
+            {% endfor %}
+            <td>{{ r.forces }}</td>
+            <td style="font-size:0.78rem;color:var(--text-dim)">
+              {% if r.rank == '大名' %}（本城直轄）
+              {% elif corps_info %}
+                <span style="color:var(--gold)">{{ corps_info.corps_name }}</span>
+                {% if corps_info.is_leader %}<span style="color:var(--text-dim)">（首領）</span>{% endif %}
+              {% else %}
+                直臣
+                {% for d in state.districts %}{% if d.retainer == r.id %}・{{ d.name }}{% endif %}{% endfor %}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+      <div style="margin-top:0.8rem;font-size:0.75rem;color:var(--text-dim);padding:0.5rem 0;border-top:1px solid var(--border)">
+        評價等級：
+        {% for g, label in [('S','最高境界'),('A','名將之才'),('B','頗有名聲'),('C','初露頭角'),('D','略有所長'),('E','不值一提')] %}
+        <span class="eval-grade grade-{{ g }}" style="margin-right:0.4rem">{{ g }}</span>{{ label }}
+        {% endfor %}
+        &emsp;｜&emsp;
+        <span style="color:var(--gold)">[首領]</span> 表示該武將為家臣團首領
+      </div>
+    </div>
+
+    <!-- TAB B: 家臣團管理（Feedback 2） -->
+    {% if faction_id == 'oda' %}
+    <div id="tab-corps" style="display:none">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+        <span style="font-size:0.82rem;color:var(--text-dim)">家臣團是代替大名統治領地的組織。大名只能直接命令「直臣」和「首領」。</span>
+        <button class="btn-sm" style="white-space:nowrap;padding:0.4rem 1rem" onclick="showCorpsForm()">＋ 成立新家臣團</button>
+      </div>
+
+      <!-- 成立家臣團表單 -->
+      <div id="corps-form" style="display:none;background:var(--bg-card);border:1px solid var(--border-hi);border-radius:4px;padding:1.2rem;margin-bottom:1.2rem;max-width:600px">
+        <div style="font-size:0.88rem;font-weight:700;color:var(--gold);margin-bottom:0.8rem">成立新家臣團</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:0.8rem">
+          <div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem">家臣團名稱</div>
+            <input id="corps-name-input" type="text" placeholder="例：尾張本国衆"
+              style="width:100%;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-main);padding:0.4rem 0.6rem;font-family:inherit;font-size:0.85rem;border-radius:2px">
+          </div>
+          <div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.3rem">首領（直臣中選擇）</div>
+            <select id="corps-leader-select"
+              style="width:100%;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-main);padding:0.4rem 0.6rem;font-family:inherit;font-size:0.85rem;border-radius:2px">
+              {% for r in direct_retainers %}
+              <option value="{{ r.id }}">{{ r.name }}（{{ r.rank }}）</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.5rem">分配轄下城（可多選）</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+          {% for c in player_castles %}
+          <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.82rem;cursor:pointer">
+            <input type="checkbox" name="corps-castle" value="{{ c.id }}"> {{ c.name }}
+          </label>
           {% endfor %}
-          <td>{{ r.forces }}</td>
-          <td style="font-size:0.78rem;color:var(--text-dim)">
-            {% if r.rank == '大名' %}（本城直轄）
-            {% else %}
-              {% for d in state.districts %}{% if d.retainer == r.id %}{{ d.name }}{% endif %}{% endfor %}
-              {% if not state.districts | selectattr('retainer','equalto',r.id) | list %}—{% endif %}
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn-upgrade" onclick="createCorps()">成立家臣團</button>
+          <button class="btn-sm" onclick="document.getElementById('corps-form').style.display='none'">取消</button>
+        </div>
+      </div>
 
-    <div style="margin-top:1rem;font-size:0.75rem;color:var(--text-dim);padding:0.5rem 0;border-top:1px solid var(--border)">
-      評價等級說明（玩家僅見文字，不見數值）：
-      {% for g, label in [('S','最高境界'),('A','名將之才'),('B','頗有名聲'),('C','初露頭角'),('D','略有所長'),('E','不值一提')] %}
-      <span class="eval-grade grade-{{ g }}" style="margin-right:0.4rem">{{ g }}</span>{{ label }}
-      {% endfor %}
+      <!-- 現有家臣團列表 -->
+      {% if corps_list %}
+      <div style="display:flex;flex-direction:column;gap:1rem" id="corps-list-el">
+        {% for corps in corps_list %}
+        {% set leader = leader_map.get(corps.leader) %}
+        <div class="corps-card" id="corps-{{ corps.id }}">
+          <div class="corps-card-header">
+            <div>
+              <span class="corps-name">{{ corps.name }}</span>
+              <span class="corps-leader-tag">首領：{{ leader.name if leader else '（未設）' }}</span>
+            </div>
+            <button class="btn-sm" style="color:#e74c3c;border-color:#c0392b"
+              onclick="deleteCorps('{{ corps.id }}')">解散</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-top:0.6rem">
+            <div>
+              <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.4rem">團員</div>
+              {% if corps.members %}
+              {% for mid in corps.members %}
+              {% for r in state.retainers %}{% if r.id == mid %}
+              <div style="font-size:0.82rem;padding:0.2rem 0">
+                {{ r.name }}（{{ r.rank }}）
+                <button style="font-size:0.65rem;padding:0.05rem 0.3rem;background:none;border:1px solid #555;color:#95a5a6;cursor:pointer;margin-left:0.3rem" onclick="removeMember('{{ corps.id }}','{{ r.id }}')">移除</button>
+              </div>
+              {% endif %}{% endfor %}
+              {% endfor %}
+              {% else %}
+              <div style="font-size:0.78rem;color:var(--text-dim)">（尚無其他成員）</div>
+              {% endif %}
+
+              <!-- 加入成員 -->
+              <div style="margin-top:0.5rem;display:flex;gap:0.4rem">
+                <select id="add-member-{{ corps.id }}"
+                  style="flex:1;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-main);padding:0.3rem 0.4rem;font-family:inherit;font-size:0.78rem;border-radius:2px">
+                  <option value="">— 加入成員 —</option>
+                  {% for r in direct_retainers %}
+                  {% if r.id != corps.leader %}
+                  <option value="{{ r.id }}">{{ r.name }}（{{ r.rank }}）</option>
+                  {% endif %}
+                  {% endfor %}
+                </select>
+                <button class="btn-sm" onclick="addMember('{{ corps.id }}')">加入</button>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.4rem">轄下城</div>
+              {% if corps.territories %}
+              {% for cid in corps.territories %}
+              {% for c in state.castles %}{% if c.id == cid %}
+              <div style="font-size:0.82rem;padding:0.2rem 0">
+                🏯 {{ c.name }}（{{ c.province }}）
+                <button style="font-size:0.65rem;padding:0.05rem 0.3rem;background:none;border:1px solid #555;color:#95a5a6;cursor:pointer;margin-left:0.3rem" onclick="removeTerritory('{{ corps.id }}','{{ c.id }}')">移除</button>
+              </div>
+              {% endif %}{% endfor %}
+              {% endfor %}
+              {% else %}
+              <div style="font-size:0.78rem;color:var(--text-dim)">（尚未分配領地）</div>
+              {% endif %}
+
+              <!-- 分配城 -->
+              <div style="margin-top:0.5rem;display:flex;gap:0.4rem">
+                <select id="add-castle-{{ corps.id }}"
+                  style="flex:1;background:var(--bg-dark);border:1px solid var(--border);color:var(--text-main);padding:0.3rem 0.4rem;font-family:inherit;font-size:0.78rem;border-radius:2px">
+                  <option value="">— 分配城 —</option>
+                  {% for c in player_castles %}
+                  {% if c.id not in corps.territories %}
+                  <option value="{{ c.id }}">{{ c.name }}</option>
+                  {% endif %}
+                  {% endfor %}
+                </select>
+                <button class="btn-sm" onclick="addTerritory('{{ corps.id }}')">分配</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding:2rem;text-align:center;color:var(--text-dim);background:var(--bg-card);border:1px solid var(--border);border-radius:4px">
+        尚無家臣團。點擊「成立新家臣團」建立第一個家臣團。
+      </div>
+      {% endif %}
+
+      <div style="margin-top:1rem;padding:0.8rem;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;font-size:0.78rem;color:var(--text-dim)">
+        ⚠ 遊戲規則：玩家只能直接命令「宿老」、「家老」等直臣，或各家臣團首領。
+        其他武將須透過所屬家臣團首領下達命令。
+      </div>
     </div>
+    {% endif %}
+
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTab(name) {
+  document.getElementById('tab-retainers').style.display = name === 'retainers' ? '' : 'none';
+  const corpsTab = document.getElementById('tab-corps');
+  if (corpsTab) corpsTab.style.display = name === 'corps' ? '' : 'none';
+}
+
+function showCorpsForm() {
+  document.getElementById('corps-form').style.display = '';
+}
+
+async function createCorps() {
+  const name   = document.getElementById('corps-name-input').value.trim();
+  const leader = document.getElementById('corps-leader-select').value;
+  const castles = [...document.querySelectorAll('input[name="corps-castle"]:checked')].map(el => el.value);
+  if (!name) { showToast('請輸入家臣團名稱'); return; }
+  if (!leader) { showToast('請選擇首領'); return; }
+
+  const r = await apiFetch('/api/corps', 'POST', { name, leader, territories: castles });
+  if (r.ok) { showToast(r.msg); setTimeout(() => location.reload(), 800); }
+  else       showToast('失敗：' + r.msg);
+}
+
+async function deleteCorps(corpsId) {
+  if (!confirm('確定解散此家臣團？')) return;
+  const r = await apiFetch(`/api/corps/${corpsId}`, 'DELETE');
+  if (r.ok) { showToast(r.msg); setTimeout(() => location.reload(), 800); }
+  else       showToast('失敗：' + r.msg);
+}
+
+async function addMember(corpsId) {
+  const sel = document.getElementById(`add-member-${corpsId}`);
+  if (!sel.value) { showToast('請選擇成員'); return; }
+  const r = await apiFetch(`/api/corps/${corpsId}/members`, 'POST', { retainer_id: sel.value, action: 'add' });
+  if (r.ok) { showToast(r.msg); setTimeout(() => location.reload(), 800); }
+  else       showToast('失敗：' + r.msg);
+}
+
+async function removeMember(corpsId, retainerId) {
+  const r = await apiFetch(`/api/corps/${corpsId}/members`, 'POST', { retainer_id: retainerId, action: 'remove' });
+  if (r.ok) { showToast(r.msg); setTimeout(() => location.reload(), 800); }
+  else       showToast('失敗：' + r.msg);
+}
+
+async function addTerritory(corpsId) {
+  const sel = document.getElementById(`add-castle-${corpsId}`);
+  if (!sel.value) { showToast('請選擇城'); return; }
+  const r = await apiFetch(`/api/corps/${corpsId}/territories`, 'POST', { castle_id: sel.value, action: 'add' });
+  if (r.ok) { showToast(r.msg); setTimeout(() => location.reload(), 800); }
+  else       showToast('失敗：' + r.msg);
+}
+
+async function removeTerritory(corpsId, castleId) {
+  const r = await apiFetch(`/api/corps/${corpsId}/territories`, 'POST', { castle_id: castleId, action: 'remove' });
+  if (r.ok) { showToast(r.msg); setTimeout(() => location.reload(), 800); }
+  else       showToast('失敗：' + r.msg);
+}
+
+// Show correct tab on load
+{% if tab == 'corps' %}showTab('corps');{% endif %}
+</script>
 {% endblock %}
