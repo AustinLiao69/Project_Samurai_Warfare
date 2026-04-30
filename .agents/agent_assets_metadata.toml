@@ -6,3 +6,9 @@ id = "IuZRgCFOHU99mfCtJc-5y"
 uri = "file://00.Project documents/REPORT_20260429.md"
 type = "text"
 title = "工作日報 2026-04-29"
+
+[[outputs]]
+id = "qaGZrWOSqdpLL_GzuWj_K"
+uri = "file://00.Project documents/REVIEW_0000_to_0010_20260430.md"
+type = "text"
+title = "文件審查報告 0000–0010"
