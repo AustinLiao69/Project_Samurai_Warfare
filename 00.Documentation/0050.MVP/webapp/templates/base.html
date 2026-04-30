@@ -20,36 +20,48 @@
     <span class="res-item"><span class="res-label">勢力：</span>
       <span class="res-value" style="color:{{ '#e74c3c' if state.player_faction=='oda' else '#2980b9' }}">{{ state.factions[state.player_faction].name }}</span>
     </span>
+    {% if active != 'map' %}
+    <a href="{{ url_for('index') }}" class="topbar-back-btn">← 返回地圖</a>
+    {% endif %}
   </div>
 </header>
 
-<!-- NAV -->
-<nav class="nav">
-  <a href="{{ url_for('index') }}"      class="{{ 'active' if active=='map' }}">☰ 天下地圖</a>
-  <a href="{{ url_for('territory') }}"  class="{{ 'active' if active=='territory' }}">🏘 領地管理</a>
-  <a href="{{ url_for('retainers') }}"  class="{{ 'active' if active=='retainers' }}">👤 家臣一覽</a>
-  <a href="{{ url_for('politics') }}"   class="{{ 'active' if active=='politics' }}">📜 政務選單</a>
-  <a href="{{ url_for('council') }}"    class="{{ 'active' if active=='council' }}">🏛 評定會議</a>
+<!-- Sub-page nav (hidden on map; map uses advisor dialogue) -->
+{% if active != 'map' %}
+<nav class="subnav">
+  <a href="{{ url_for('index') }}"    class="{{ 'active' if active=='map' }}">🗺 地圖</a>
+  <a href="{{ url_for('politics') }}" class="{{ 'active' if active=='politics' }}">📜 政務</a>
+  <a href="{{ url_for('military') }}" class="{{ 'active' if active=='military' }}">⚔ 軍事</a>
+  <a href="{{ url_for('retainers') }}"class="{{ 'active' if active=='retainers' }}">👤 家臣</a>
+  <a href="{{ url_for('intel') }}"    class="{{ 'active' if active=='intel' }}">🥷 情報</a>
+  <a href="{{ url_for('council') }}"  class="{{ 'active' if active=='council' }}">🏛 評定</a>
 </nav>
+{% endif %}
 
 {% block body %}{% endblock %}
 
 <!-- ══════════════════════════════════════════════════ -->
-<!-- MODAL A: DISTRICT DETAIL (UC-010/011/012/022/023) -->
+<!-- TERRITORY MODAL（城 = 郡，統一管理視窗） -->
 <!-- ══════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="district-modal">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" id="dm-title">郡詳情</span>
+      <span class="modal-title" id="dm-title">城詳情</span>
       <button class="modal-close" onclick="closeDistrictModal()">✕</button>
     </div>
     <div style="font-size:0.75rem;color:var(--text-dim);margin-top:-0.6rem;margin-bottom:0.8rem" id="dm-type"></div>
+
+    <!-- Corps/Daimyo Notice -->
+    <div class="corps-notice" id="dm-corps-notice" style="display:none">
+      <span id="dm-corps-notice-text"></span>
+    </div>
 
     <!-- Info -->
     <div class="modal-section">
       <div class="modal-label">基本資訊</div>
       <div class="info-grid">
-        <div class="info-cell"><div class="info-cell-label">所屬城</div><div class="info-cell-val" id="dm-castle">—</div></div>
+        <div class="info-cell"><div class="info-cell-label">城等級</div><div class="info-cell-val" id="dm-level">—</div></div>
+        <div class="info-cell"><div class="info-cell-label">守備兵力</div><div class="info-cell-val" id="dm-garrison">—</div></div>
         <div class="info-cell"><div class="info-cell-label">設施狀態</div><div class="info-cell-val" id="dm-facility">—</div></div>
         <div class="info-cell"><div class="info-cell-label">本月金收入</div><div class="info-cell-val" id="dm-gold-out">—</div></div>
         <div class="info-cell"><div class="info-cell-label">本月軍糧</div><div class="info-cell-val" id="dm-supply-out">—</div></div>
@@ -96,11 +108,11 @@
     <div class="attack-section" id="dm-attack-section">
       <div class="modal-label" style="margin-bottom:0.5rem">軍事行動</div>
       <div class="attack-mode-tabs">
-        <button class="attack-tab active" id="tab-assault" onclick="setAttackMode('assault')">⚔ 攻郡野戰</button>
-        <button class="attack-tab" id="tab-siege" onclick="setAttackMode('siege')">🏯 圍城戰</button>
+        <button class="attack-tab active" id="tab-assault" onclick="setAttackMode('assault')">⚔ 野戰</button>
+        <button class="attack-tab" id="tab-siege" onclick="setAttackMode('siege')">🏯 圍城</button>
       </div>
       <div id="dm-mode-desc" style="font-size:0.72rem;color:var(--text-dim);margin-bottom:0.5rem">
-        攻郡野戰：立即與守方決戰，勝者取得郡領地。
+        野戰：立即決戰，勝者取得此城。
       </div>
       <select class="attacker-select" id="dm-attacker-select"></select>
       <button class="btn-attack" id="dm-attack-btn">⚔ 出兵</button>
@@ -109,25 +121,6 @@
         <div class="battle-summary" id="dm-battle-summary"></div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════ -->
-<!-- MODAL B: CASTLE DETAIL (click on castle node)    -->
-<!-- ══════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="castle-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="cm-title">城詳情</span>
-      <button class="modal-close" onclick="closeCastleModal()">✕</button>
-    </div>
-    <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem" id="cm-meta"></div>
-    <div class="info-grid" style="margin-bottom:1rem">
-      <div class="info-cell"><div class="info-cell-label">城等級</div><div class="info-cell-val" id="cm-level">—</div></div>
-      <div class="info-cell"><div class="info-cell-label">守備兵力</div><div class="info-cell-val" id="cm-garrison">—</div></div>
-    </div>
-    <div class="modal-label">轄下郡縣</div>
-    <div class="castle-district-list" id="cm-district-list"></div>
   </div>
 </div>
 

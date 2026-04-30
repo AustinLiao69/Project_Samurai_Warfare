@@ -3,101 +3,105 @@
 <div class="main">
   <div class="page-content">
     <div class="page-header">
-      <span class="page-title">評定會議</span>
-      <span style="font-size:0.8rem;color:var(--text-dim)">家老評議・大名裁決　第 {{ state.turn }} 回合</span>
+      <span class="page-title">🏛 評定會議</span>
+      <span style="font-size:0.8rem;color:var(--text-dim)">本月議題 {{ state.turn }}/{{ topics_total }}</span>
     </div>
 
     <div class="council-layout">
-      <!-- LEFT: 議題 + 立場列表 -->
-      <div>
-        <div class="council-topic">
-          <div class="ct-label">本月議題 {{ state.turn }}/{{ topics_total }}</div>
-          <div class="ct-title">{{ topic.title }}</div>
-          <div class="ct-desc">{{ topic.desc }}</div>
+
+      <!-- LEFT: 議題 + 裁決 -->
+      <div class="council-main">
+        <div class="council-topic-card">
+          <div class="council-topic-label">本月議題</div>
+          <div class="council-topic-title">{{ topic.title }}</div>
+          <div class="council-topic-desc">{{ topic.desc }}</div>
         </div>
 
-        <div class="stance-list" id="stance-list">
+        <!-- 各武將立場 -->
+        <div class="council-stances">
           {% for r in council_retainers %}
-          {% set stance_data = topic.stances.get(r.id, ('中立', '（未表態）', [])) %}
+          {% set stance_data = topic.stances.get(r.id) %}
+          {% if stance_data %}
           {% set stance_label = stance_data[0] %}
-          {% set stance_opinion = stance_data[1] %}
-          <div class="stance-item">
-            <div style="flex:1">
-              <div class="si-name">
-                {{ r.name }}
-                <span class="si-rank" style="margin-left:0.5rem">{{ r.rank }}</span>
-              </div>
-              <div class="si-opinion">「{{ stance_opinion }}」</div>
+          {% set comment = stance_data[1] %}
+          {% endif %}
+          <div class="stance-row">
+            <div class="stance-retainer">
+              <span class="stance-name">{{ r.name }}</span>
+              <span class="stance-rank-badge">{{ r.rank }}</span>
             </div>
-            <span class="stance-tag
-              {%- if '戰' in stance_label or '強硬' in stance_label or '支持' in stance_label or '主張' in stance_label %} stance-agree
-              {%- elif '謹慎' in stance_label or '外交' in stance_label or '中立' in stance_label %} stance-neutral
-              {%- else %} stance-oppose
-              {%- endif %}">{{ stance_label }}</span>
+            <div class="stance-content">
+              {% if stance_data %}
+              <span class="stance-tag tag-{{ '主戦' if '主戦' in stance_label or '主張' in stance_label or '強烈' in stance_label or '支持' in stance_label
+                                       else ('反対' if '反対' in stance_label or '謹慎' in stance_label or '強硬' in stance_label
+                                       else ('中立' if '中立' in stance_label else 'default')) }}">
+                {{ stance_label }}
+              </span>
+              <span class="stance-comment">{{ comment }}</span>
+              {% else %}
+              <span class="stance-tag tag-中立">中立</span>
+              <span class="stance-comment">（無意見）</span>
+              {% endif %}
+            </div>
           </div>
           {% endfor %}
         </div>
+
+        <!-- 裁決按鈕 -->
+        {% if state.council_decision %}
+        <div class="decision-made">
+          <div class="decision-label">✓ 本月裁決已下達</div>
+          <div class="decision-choice">{{ state.council_decision.label }}</div>
+        </div>
+        {% else %}
+        <div class="council-choices" id="choice-area">
+          {% for c in topic.choices %}
+          <button class="choice-btn"
+                  data-choice-id="{{ c.id }}"
+                  data-choice-label="{{ c.label }}"
+                  onclick="makeDecision('{{ topic.id }}', '{{ c.id }}', '{{ c.label }}')">
+            <div class="choice-btn-label">{{ c.label }}</div>
+            <div class="choice-btn-desc">{{ c.desc }}</div>
+          </button>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div style="margin-top:1.5rem;display:flex;gap:1rem;align-items:center">
+          <a href="{{ url_for('politics') }}" class="btn-sm" style="padding:0.5rem 1.2rem;text-decoration:none">
+            ← 返回政務
+          </a>
+          <button class="end-turn-btn js-end-turn" style="width:auto;padding:0.6rem 2rem">⏭ 結束本月</button>
+        </div>
       </div>
 
-      <!-- RIGHT: 裁決 -->
-      <div>
-        <div class="council-summary" id="council-summary">
-          <div class="cs-title">大名裁決</div>
+      <!-- RIGHT: 裁決影響說明 + 武將忠誠一覽 -->
+      <aside class="council-aside">
+        <div class="aside-title">裁決影響規則</div>
+        <div class="aside-rule">✓ 支持者　忠誠度 <span style="color:#27ae60">+3</span></div>
+        <div class="aside-rule">✗ 反對者　忠誠度 <span style="color:#e74c3c">-2</span></div>
+        <div class="aside-rule">⏳ 延議　　所有人 <span style="color:#e67e22">-1</span></div>
+        <div class="aside-rule">— 中立　　不受影響</div>
 
-          {% if state.council_decision %}
-          <!-- 本月已裁決 -->
-          <div style="background:rgba(39,174,96,0.1);border:1px solid #27ae60;border-radius:4px;padding:0.8rem;margin-bottom:1rem">
-            <div style="color:#27ae60;font-size:0.88rem;font-weight:700">✓ 本月裁決已下達</div>
-            <div style="font-size:0.82rem;color:var(--text-dim);margin-top:0.3rem">
-              {{ state.council_decision.label }}
+        <div class="aside-title" style="margin-top:1.2rem">武將忠誠度</div>
+        {% for r in council_retainers %}
+        <div class="aside-loyalty-row">
+          <span class="aside-loyalty-name">{{ r.name }}</span>
+          <div class="aside-loyalty-bar-bg">
+            <div class="aside-loyalty-bar-fill"
+                 style="width:{{ r.loyalty }}%;background:
+                   {{'#f1c40f' if r.loyalty > 90 else ('#27ae60' if r.loyalty > 70 else ('#3498db' if r.loyalty > 50 else ('#e67e22' if r.loyalty > 30 else '#e74c3c')))}}">
             </div>
           </div>
-          {% else %}
-          <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.8">
-            裁決將影響家臣忠誠度。<br>支持者忠誠度 <span style="color:#27ae60">+3</span>，反對者 <span style="color:#e74c3c">-2</span>。
-          </div>
-          {% endif %}
-
-          <div class="decision-btns" id="decision-btns">
-            {% for choice in topic.choices %}
-            <button class="btn btn-council-choice
-              {%- if loop.index == 1 %} btn-execute
-              {%- elif loop.index == 2 %} btn-veto
-              {%- else %} btn-neutral
-              {%- endif %}"
-              onclick="makeDecision('{{ choice.id }}', '{{ choice.label }}')"
-              {% if state.council_decision %}disabled{% endif %}>
-              {{ choice.label }}
-              <span class="choice-desc"> — {{ choice.desc }}</span>
-            </button>
-            {% endfor %}
-          </div>
-
-          <!-- 忠誠度變化結果 -->
-          <div id="loyalty-result" style="display:none;margin-top:1rem;padding:0.8rem;background:var(--bg-card);border:1px solid var(--border);border-radius:4px">
-            <div class="cs-title">裁決影響</div>
-            <div id="loyalty-result-list"></div>
-          </div>
+          <span class="aside-loyalty-val">{{ r.loyalty }}</span>
         </div>
+        {% endfor %}
 
-        <!-- 回合資源 -->
-        <div style="margin-top:1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:1rem">
-          <div class="cs-title">回合資源</div>
-          <div style="font-size:0.82rem;color:var(--text-dim);line-height:2">
-            金錢：{{ state.factions[state.player_faction].gold }} 金<br>
-            軍糧：{{ state.factions[state.player_faction].military_supply }}<br>
-            總兵力：
-            {% set total = namespace(v=0) %}
-            {% for r in state.retainers %}{% if r.faction == state.player_faction %}{% set total.v = total.v + r.forces %}{% endif %}{% endfor %}
-            約 {{ total.v }} 人
-          </div>
+        <div id="decision-result" style="margin-top:1.2rem;display:none">
+          <div class="aside-title">裁決結果</div>
+          <div id="decision-result-list"></div>
         </div>
-
-        <!-- 進入下一階段 -->
-        <div style="margin-top:1rem">
-          <button class="end-turn-btn js-end-turn" style="font-size:0.85rem">⏭ 結束本月回合</button>
-        </div>
-      </div>
+      </aside>
     </div>
   </div>
 </div>
@@ -107,51 +111,39 @@
 <script>
 const TOPIC_STANCES = {{ topic_stances_json | tojson }};
 
-async function makeDecision(choiceId, choiceLabel) {
-  const btns = document.querySelectorAll('.btn-council-choice');
+async function makeDecision(topicId, choiceId, choiceLabel) {
+  const btns = document.querySelectorAll('.choice-btn');
   btns.forEach(b => b.disabled = true);
-
   try {
-    const res = await fetch('/api/council-decision', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ topic_id: '{{ topic.id }}', choice_id: choiceId, choice_label: choiceLabel }),
-    });
-    const data = await res.json();
+    const data = await fetch('/api/council-decision', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ topic_id: topicId, choice_id: choiceId, choice_label: choiceLabel })
+    }).then(r => r.json());
 
     if (data.ok) {
-      showToast('裁決已下達：' + choiceLabel);
-
-      // 顯示忠誠度變化
-      const resultEl = document.getElementById('loyalty-result');
-      const listEl   = document.getElementById('loyalty-result-list');
-      if (data.loyalty_changes && data.loyalty_changes.length) {
-        listEl.innerHTML = data.loyalty_changes.map(c => {
-          const sign  = c.delta > 0 ? '+' : '';
-          const color = c.delta > 0 ? '#27ae60' : c.delta < 0 ? '#e74c3c' : '#95a5a6';
-          return `<div style="font-size:0.82rem;padding:0.25rem 0;border-bottom:1px solid #1e1e1e">
-            ${c.name}：${c.before_label} → ${c.after_label}
-            <span style="color:${color};margin-left:0.5rem">${sign}${c.delta}</span>
-          </div>`;
-        }).join('');
+      showToast(data.msg);
+      const resultEl = document.getElementById('decision-result');
+      const listEl   = document.getElementById('decision-result-list');
+      if (data.loyalty_changes && data.loyalty_changes.length > 0) {
+        listEl.innerHTML = data.loyalty_changes.map(c =>
+          `<div class="decision-change-row">
+            <span>${c.name}</span>
+            <span style="color:${c.delta > 0 ? '#27ae60' : '#e74c3c'}">${c.delta > 0 ? '+' : ''}${c.delta}</span>
+            <span style="font-size:0.72rem;color:var(--text-dim)">${c.before_label} → ${c.after_label}</span>
+          </div>`
+        ).join('');
         resultEl.style.display = '';
       }
-
-      // 標記已裁決
-      const summary = document.getElementById('council-summary');
-      const badge = document.createElement('div');
-      badge.style = 'background:rgba(39,174,96,0.1);border:1px solid #27ae60;border-radius:4px;padding:0.8rem;margin-bottom:1rem';
-      badge.innerHTML = `<div style="color:#27ae60;font-size:0.88rem;font-weight:700">✓ 裁決已下達</div>
-        <div style="font-size:0.82rem;color:var(--text-dim);margin-top:0.3rem">${choiceLabel}</div>`;
-      summary.insertBefore(badge, document.getElementById('decision-btns'));
-
-      updateHUD(data.state);
+      const choiceArea = document.getElementById('choice-area');
+      if (choiceArea) {
+        choiceArea.innerHTML = `<div class="decision-made"><div class="decision-label">✓ 裁決已下達</div><div class="decision-choice">${choiceLabel}</div></div>`;
+      }
     } else {
-      showToast('裁決失敗：' + data.msg);
+      showToast(data.msg || '操作失敗');
       btns.forEach(b => b.disabled = false);
     }
   } catch(e) {
-    showToast('裁決失敗：' + e.message);
+    showToast('操作失敗：' + e.message);
     btns.forEach(b => b.disabled = false);
   }
 }

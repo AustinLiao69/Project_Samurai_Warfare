@@ -67,3 +67,10 @@ MM       DD      Description        Progress
 4       30      [FB3] 評定裁決忠誠度影響：/api/council-decision 路由，apply_council_decision() 邏輯，支持者+3 反對者-2 延議-1   Done
 4       30      [FB4] 評定議題池：COUNCIL_TOPICS 8 主題輪換（桶狹間奇襲/獻城要求/補防請求/商路/神宮/豪族歸降/馬廄/間諜），依回合輪換  Done
 4       30      [FB6] MVP 第二次回饋紀錄存入 00.Documentation/0.對話/20260430.MVP第二次回饋紀錄.md     Done
+4       30      [FB1] 一城一郡大重構：data/initial.py 取消 districts 陣列，castle 物件同時持有 district 所有屬性（type/facility/nengu/adjacent/corps_id/is_daimyo_home）     Done
+4       30      [FB2] 對話式導航移至地圖頁：左欄改為 advisor-sidebar（柴田勝家立繪/對話/5個導航按鈕），地圖頁無頂端 tab，子頁改用 subnav      Done
+4       30      [FB3] 領地管理合併進政務：/territory redirect → /politics，politics.html 整合領地治理卡片 + 評定會議快捷欄      Done
+4       30      [FB4] 家臣團轄地禁止直接管理：territory modal 偵測 is_corps_territory，顯示鎖定提示並隱藏管理 UI       Done
+4       30      [FB5] 重命名 + 新增 tab：nav 改為 地圖/政務/軍事/家臣/情報/評定；新增 /military（徵兵/出兵）、/intel（佔位符） 頁面      Done
+4       30      [FB7] 更多城郡武將：8城（5 Oda + 3 Imagawa）、8 Oda 武將（+佐久間信盛/瀧川一益/林秀貞）、完整 stat 屬性      Done
+4       30      [FB8] 大名本城保護：清洲城 is_daimyo_home=True，/api/corps/<id>/territories 和家臣團分配均阻擋，modal 顯示 👑 提示     Done

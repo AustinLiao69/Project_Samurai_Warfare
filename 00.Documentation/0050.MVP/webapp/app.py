@@ -6,7 +6,7 @@ from data.initial import INITIAL_STATE, FACILITY_UPGRADE, loyalty_color, COUNCIL
 from game.logic import (
     process_turn, upgrade_facility, set_nengu,
     resolve_battle, resolve_siege, mobilize_troops,
-    calc_district_output, apply_council_decision,
+    calc_castle_output, apply_council_decision,
 )
 
 app = Flask(__name__)
@@ -19,9 +19,6 @@ _state = copy.deepcopy(INITIAL_STATE)
 def gs():
     return _state
 
-def get_district(did):
-    return next((d for d in gs()["districts"] if d["id"] == did), None)
-
 def get_castle(cid):
     return next((c for c in gs()["castles"] if c["id"] == cid), None)
 
@@ -31,87 +28,56 @@ def get_retainer(rid):
 def faction_castles(faction_id):
     return [c for c in gs()["castles"] if c["faction"] == faction_id]
 
-def faction_districts(faction_id):
-    cids = {c["id"] for c in faction_castles(faction_id)}
-    return [d for d in gs()["districts"] if d["castle"] in cids]
-
 def total_forces(faction_id):
     return sum(r["forces"] for r in gs()["retainers"] if r["faction"] == faction_id)
 
-def next_upgrade_spec(d):
-    nxt = d["facility_level"] + 1
-    return next((r for r in FACILITY_UPGRADE.get(d["type"], []) if r["level"] == nxt), None)
+def next_upgrade_spec(c):
+    nxt = c["facility_level"] + 1
+    return next((r for r in FACILITY_UPGRADE.get(c["type"], []) if r["level"] == nxt), None)
 
 def current_topic():
-    """回合號決定當前議題（輪換）"""
     idx = (gs()["turn"] - 1) % len(COUNCIL_TOPICS)
     return COUNCIL_TOPICS[idx]
 
 def get_advisor():
-    """取得玩家的主要直臣（最高忠誠度的宿老/家老）"""
-    s = gs()
+    """取得玩家主要直臣（最高忠誠度的宿老/家老，corps_id=None）"""
+    s  = gs()
     pf = s["player_faction"]
     direct = [r for r in s["retainers"]
               if r["faction"] == pf
               and r["rank"] in ("宿老", "家老")
               and r.get("corps_id") is None]
-    if not direct:
-        direct = [r for r in s["retainers"] if r["faction"] == pf and r["rank"] != "大名"]
     return max(direct, key=lambda r: r["loyalty"]) if direct else None
 
 def corps_map_for_retainers():
-    """回傳 {retainer_id: {corps_id, corps_name, is_leader}} 的映射"""
     result = {}
     for corps in gs().get("corps", []):
-        result[corps["leader"]] = {
-            "corps_id":   corps["id"],
-            "corps_name": corps["name"],
-            "is_leader":  True,
-        }
+        result[corps["leader"]] = {"corps_id": corps["id"], "corps_name": corps["name"], "is_leader": True}
         for mid in corps.get("members", []):
-            result[mid] = {
-                "corps_id":   corps["id"],
-                "corps_name": corps["name"],
-                "is_leader":  False,
-            }
+            result[mid] = {"corps_id": corps["id"], "corps_name": corps["name"], "is_leader": False}
     return result
 
-# 政務選單分類 + 子選項（Feedback 1+5）
+def get_corps_for_castle(castle_id):
+    """回傳管轄此城的家臣團（若有）"""
+    for corps in gs().get("corps", []):
+        if castle_id in corps.get("territories", []):
+            leader = get_retainer(corps["leader"])
+            return {"corps_name": corps["name"], "leader_name": leader["name"] if leader else ""}
+    return None
+
+# ── 政務選單資料（Feedback 1+5）────────────────────────────
+
 POLITICS_CATEGORIES = [
-    {
-        "id": "military",
-        "icon": "⚔",
-        "name": "軍事行動",
-        "hint": "徵兵・出兵・調防",
-        "subs": [
-            {"name": "徵集農兵",  "desc": "從郡縣徵集農民兵（需 1 月訓練）",  "enabled": True,  "url": "/territory"},
-            {"name": "出兵攻打",  "desc": "在地圖選擇目標郡發動攻擊",        "enabled": True,  "url": "/"},
-            {"name": "調防部隊",  "desc": "調整各城守備兵力配置",            "enabled": False, "toast": ""},
-            {"name": "返還農民",  "desc": "解散農兵還田，恢復農業生產",       "enabled": False, "toast": ""},
-        ],
-    },
     {
         "id": "territory",
         "icon": "🏯",
         "name": "領地治理",
         "hint": "設施・年貢・開墾",
         "subs": [
-            {"name": "設施升級",  "desc": "提升郡縣設施等級增加產出",         "enabled": True,  "url": "/territory"},
-            {"name": "年貢調整",  "desc": "調整各郡年貢率（10%~60%）",        "enabled": True,  "url": "/territory"},
-            {"name": "開墾農田",  "desc": "開發荒地，增加農業郡產能",         "enabled": False, "toast": ""},
-            {"name": "郡城巡視",  "desc": "視察領地，提升民心與忠誠度",       "enabled": False, "toast": ""},
-        ],
-    },
-    {
-        "id": "retainer",
-        "icon": "👤",
-        "name": "家臣管理",
-        "hint": "任命・晉升・家臣團",
-        "subs": [
-            {"name": "成立家臣團", "desc": "組建家臣團，委託首領統治領地",    "enabled": True,  "url": "/retainers?tab=corps"},
-            {"name": "知行分配",   "desc": "將郡縣知行地分封給家臣",          "enabled": True,  "url": "/retainers"},
-            {"name": "任命官職",   "desc": "調整家臣的官位與職責",            "enabled": False, "toast": ""},
-            {"name": "家臣廢黜",   "desc": "剝奪家臣知行，迫其離去",          "enabled": False, "toast": ""},
+            {"name": "設施升級",  "desc": "提升城內設施等級增加產出",       "enabled": True,  "url": "/politics"},
+            {"name": "年貢調整",  "desc": "調整各城年貢率（10%~60%）",      "enabled": True,  "url": "/politics"},
+            {"name": "開墾農田",  "desc": "開發荒地，增加農業城產能",       "enabled": False},
+            {"name": "城域巡視",  "desc": "視察領地，提升民心與忠誠度",     "enabled": False},
         ],
     },
     {
@@ -120,22 +86,9 @@ POLITICS_CATEGORIES = [
         "name": "外交談判",
         "hint": "結盟・宣戰・和議",
         "subs": [
-            {"name": "結盟談判",  "desc": "與其他勢力締結同盟",              "enabled": False, "toast": ""},
-            {"name": "宣戰通告",  "desc": "正式向敵對勢力宣戰",              "enabled": False, "toast": ""},
-            {"name": "和議談判",  "desc": "與交戰勢力展開和平談判",          "enabled": False, "toast": ""},
-            {"name": "送質子",    "desc": "以人質鞏固同盟關係",              "enabled": False, "toast": ""},
-        ],
-    },
-    {
-        "id": "intel",
-        "icon": "🥷",
-        "name": "情報活動",
-        "hint": "忍者・諜報・反諜",
-        "subs": [
-            {"name": "派遣忍者",  "desc": "派遣忍者滲透敵方收集情報",        "enabled": False, "toast": ""},
-            {"name": "收集情報",  "desc": "了解敵方兵力與動向",              "enabled": False, "toast": ""},
-            {"name": "召回忍者",  "desc": "召回潛伏中的忍者",               "enabled": False, "toast": ""},
-            {"name": "設置防諜",  "desc": "加強本國反間諜防禦",              "enabled": False, "toast": ""},
+            {"name": "結盟談判",  "desc": "與其他勢力締結同盟",            "enabled": False},
+            {"name": "宣戰通告",  "desc": "正式向敵對勢力宣戰",            "enabled": False},
+            {"name": "和議談判",  "desc": "與交戰勢力展開和平談判",        "enabled": False},
         ],
     },
     {
@@ -144,10 +97,9 @@ POLITICS_CATEGORIES = [
         "name": "評定會議",
         "hint": "召議・評定・裁決",
         "subs": [
-            {"name": "召開評議",  "desc": "召集家老評議本月重要事項",        "enabled": True,  "url": "/council"},
-            {"name": "頒布法令",  "desc": "頒布政令，影響民心與生產",        "enabled": False, "toast": ""},
-            {"name": "繼承宣告",  "desc": "宣告繼承人，影響家臣忠誠",        "enabled": False, "toast": ""},
-            {"name": "分封領地",  "desc": "正式分封領地給家臣團",            "enabled": True,  "url": "/retainers?tab=corps"},
+            {"name": "召開評議",  "desc": "召集家老評議本月重要事項",      "enabled": True,  "url": "/council"},
+            {"name": "頒布法令",  "desc": "頒布政令，影響民心與生產",      "enabled": False},
+            {"name": "分封領地",  "desc": "正式分封領地給家臣團",          "enabled": True,  "url": "/retainers?tab=corps"},
         ],
     },
     {
@@ -156,9 +108,8 @@ POLITICS_CATEGORIES = [
         "name": "儀式典禮",
         "hint": "慶典・祭祀・茶道",
         "subs": [
-            {"name": "舉行慶典",  "desc": "舉辦慶祝活動提升家臣士氣",        "enabled": False, "toast": ""},
-            {"name": "祭祀神明",  "desc": "祭祀神明，祈求戰場勝利",          "enabled": False, "toast": ""},
-            {"name": "茶道接待",  "desc": "接待武將，增進感情與忠誠",        "enabled": False, "toast": ""},
+            {"name": "舉行慶典",  "desc": "舉辦慶祝活動提升家臣士氣",      "enabled": False},
+            {"name": "祭祀神明",  "desc": "祭祀神明，祈求戰場勝利",        "enabled": False},
         ],
     },
     {
@@ -167,9 +118,9 @@ POLITICS_CATEGORIES = [
         "name": "戰後處置",
         "hint": "領地・收編・封賞",
         "subs": [
-            {"name": "領地處置",  "desc": "決定佔領領地的歸屬",              "enabled": False, "toast": ""},
-            {"name": "收編武將",  "desc": "招攬敵方降將加入己方",            "enabled": False, "toast": ""},
-            {"name": "封賞功臣",  "desc": "賞賜有功武將，提升忠誠度",        "enabled": False, "toast": ""},
+            {"name": "領地處置",  "desc": "決定佔領領地的歸屬",            "enabled": False},
+            {"name": "收編武將",  "desc": "招攬敵方降將加入己方",          "enabled": False},
+            {"name": "封賞功臣",  "desc": "賞賜有功武將，提升忠誠度",      "enabled": False},
         ],
     },
     {
@@ -186,8 +137,10 @@ POLITICS_CATEGORIES = [
 @app.route("/")
 def index():
     s = gs()
+    advisor = get_advisor()
     return render_template("index.html",
         state=s,
+        advisor=advisor,
         oda_forces=total_forces("oda"),
         imagawa_forces=total_forces("imagawa"),
         active="map",
@@ -196,44 +149,71 @@ def index():
 
 @app.route("/territory")
 def territory():
+    return redirect(url_for("politics"))
+
+@app.route("/politics")
+def politics():
     s = gs()
     pf = s["player_faction"]
-    pcastles = [c for c in s["castles"] if c["faction"] == pf]
-    castle_districts = {}
-    outputs = {}
-    for c in pcastles:
-        dists = [d for d in s["districts"] if d["castle"] == c["id"]]
-        castle_districts[c["id"]] = dists
-        for d in dists:
-            outputs[d["id"]] = calc_district_output(d)
-    return render_template("territory.html",
+    player_castles = faction_castles(pf)
+    outputs = {c["id"]: calc_castle_output(c) for c in player_castles}
+    advisor = get_advisor()
+    return render_template("politics.html",
         state=s,
-        player_castles=pcastles,
-        castle_districts=castle_districts,
+        categories=POLITICS_CATEGORIES,
+        categories_json=POLITICS_CATEGORIES,
+        advisor=advisor or {"name": "柴田勝家", "rank": "宿老", "lineage": "譜代",
+                            "loyalty": 80, "loyalty_label": "忠心耿耿"},
+        loyalty_color=loyalty_color,
+        player_castles=player_castles,
         outputs=outputs,
-        active="territory",
+        corps_map={c["id"]: get_corps_for_castle(c["id"]) for c in player_castles},
+        active="politics",
     )
+
+@app.route("/military")
+def military():
+    s = gs()
+    pf = s["player_faction"]
+    player_castles = faction_castles(pf)
+    # Build adjacency: all enemy castles adjacent to player castles
+    adj_enemy = []
+    my_ids = {c["id"] for c in player_castles}
+    adj_ids = set()
+    for c in player_castles:
+        adj_ids.update(c.get("adjacent", []))
+    adj_enemy = [c for c in s["castles"] if c["id"] in adj_ids and c["faction"] != pf]
+    attackers = [r for r in s["retainers"] if r["faction"] == pf and r["rank"] != "大名" and r["forces"] > 0]
+    return render_template("military.html",
+        state=s,
+        player_castles=player_castles,
+        adj_enemy=adj_enemy,
+        attackers=attackers,
+        active="military",
+    )
+
+@app.route("/intel")
+def intel():
+    return render_template("intel.html", state=gs(), active="intel")
 
 @app.route("/retainers")
 @app.route("/retainers/<faction_id>")
 def retainers(faction_id="oda"):
-    s = gs()
+    s  = gs()
+    pf = s["player_faction"]
     ret = [r for r in s["retainers"] if r["faction"] == faction_id]
-    pf  = s["player_faction"]
     cmap = corps_map_for_retainers()
 
-    # 直臣：rank=宿老/家老 且 corps_id=None
     direct_retainers = [r for r in s["retainers"]
                         if r["faction"] == pf
                         and r["rank"] in ("宿老", "家老")
-                        and r.get("corps_id") is None
-                        and r["rank"] != "大名"]
+                        and r.get("corps_id") is None]
 
-    player_castles = [c for c in s["castles"] if c["faction"] == pf]
+    player_castles = [c for c in s["castles"]
+                      if c["faction"] == pf and not c.get("is_daimyo_home", False)]
 
-    corps_list = s.get("corps", [])
-    leader_map = {r["id"]: r for r in s["retainers"]}
-
+    corps_list   = s.get("corps", [])
+    leader_map   = {r["id"]: r for r in s["retainers"]}
     tab = request.args.get("tab", "retainers")
 
     return render_template("retainers.html",
@@ -242,22 +222,7 @@ def retainers(faction_id="oda"):
         corps_map=cmap, corps_list=corps_list,
         direct_retainers=direct_retainers,
         player_castles=player_castles,
-        leader_map=leader_map,
-        tab=tab,
-    )
-
-@app.route("/politics")
-def politics():
-    s = gs()
-    advisor = get_advisor()
-    cats_json = json.dumps(POLITICS_CATEGORIES)
-    return render_template("politics.html",
-        state=s,
-        categories=POLITICS_CATEGORIES,
-        categories_json=POLITICS_CATEGORIES,
-        advisor=advisor or {"name": "柴田勝家", "rank": "宿老", "lineage": "譜代", "loyalty": 80, "loyalty_label": "忠心耿耿"},
-        loyalty_color=loyalty_color,
-        active="politics",
+        leader_map=leader_map, tab=tab,
     )
 
 @app.route("/council")
@@ -266,151 +231,139 @@ def council():
     topic = current_topic()
     cr = [r for r in s["retainers"]
           if r["faction"] == "oda" and r["rank"] in ("宿老", "家老")]
-    # topic_stances_json: {retainer_id: [stance_label, agree_with]}
     stances_for_js = {}
     for rid, (stance, comment, agree_with) in topic["stances"].items():
         stances_for_js[rid] = {"stance": stance, "agree_with": agree_with}
-
     return render_template("council.html",
-        state=s,
-        topic=topic,
+        state=s, topic=topic,
         topics_total=len(COUNCIL_TOPICS),
         council_retainers=cr,
         topic_stances_json=stances_for_js,
         active="council",
     )
 
-# ── API — End Turn ──────────────────────────────────────────
+# ── API — End Turn ──────────────────────────────────
 
 @app.route("/api/end-turn", methods=["POST"])
 def api_end_turn():
     global _state
     _state, log = process_turn(_state)
-    # 回合結束，重置本月裁決
     _state["council_decision"] = None
     return jsonify({"ok": True, "log": log, "state": _summarize()})
 
-# ── API — District ──────────────────────────────────────────
+# ── API — Castle（統一：城 = 郡） ───────────────────
 
-@app.route("/api/district/<did>")
-def api_district(did):
-    d = get_district(did)
-    if not d:
+@app.route("/api/castle/<cid>")
+def api_castle(cid):
+    c = get_castle(cid)
+    if not c:
         return jsonify({"error": "not found"}), 404
-    s = gs()
-    castle  = next((c for c in s["castles"] if c["id"] == d["castle"]), {})
-    retainer = get_retainer(d["retainer"]) if d.get("retainer") else None
-    spec    = next_upgrade_spec(d)
-    output  = calc_district_output(d)
-
-    # 確認是否有家臣團管轄
-    corps_info = None
-    for corps in s.get("corps", []):
-        if castle.get("id") in corps.get("territories", []):
-            leader = get_retainer(corps["leader"])
-            corps_info = {"corps_name": corps["name"], "leader_name": leader["name"] if leader else ""}
-            break
-
+    s  = gs()
+    pf = s["player_faction"]
+    retainer = get_retainer(c["retainer"]) if c.get("retainer") else None
+    spec     = next_upgrade_spec(c)
+    output   = calc_castle_output(c)
+    corps_info = get_corps_for_castle(cid)
     return jsonify({
-        "district": d,
-        "castle_name": castle.get("name", ""),
-        "castle_faction": castle.get("faction", ""),
-        "castle_data": castle,
-        "retainer": retainer,
-        "next_upgrade": spec,
-        "output": output,
-        "player_gold": s["factions"][s["player_faction"]]["gold"],
-        "corps_info": corps_info,
+        "castle": c,
+        "castle_name":    c["name"],
+        "castle_faction": c["faction"],
+        "castle_data":    c,
+        # compat fields (used by district modal JS)
+        "district": c,
+        "retainer":       retainer,
+        "next_upgrade":   spec,
+        "output":         output,
+        "player_gold":    s["factions"][pf]["gold"],
+        "corps_info":     corps_info,
+        "is_corps_territory": corps_info is not None,
+        "is_daimyo_home": c.get("is_daimyo_home", False),
     })
 
-@app.route("/api/district/<did>/upgrade", methods=["POST"])
-def api_upgrade(did):
+@app.route("/api/castle/<cid>/upgrade", methods=["POST"])
+def api_upgrade(cid):
     global _state
-    result, msg = upgrade_facility(_state, did)
+    result, msg = upgrade_facility(_state, cid)
     if result is None:
         return jsonify({"ok": False, "msg": msg})
     _state = result
     return jsonify({"ok": True, "msg": msg, "state": _summarize()})
 
-@app.route("/api/district/<did>/nengu", methods=["POST"])
-def api_nengu(did):
+@app.route("/api/castle/<cid>/nengu", methods=["POST"])
+def api_nengu(cid):
     global _state
     rate = request.json.get("rate", 20)
-    result, msg = set_nengu(_state, did, rate)
+    result, msg = set_nengu(_state, cid, rate)
     if result is None:
         return jsonify({"ok": False, "msg": msg})
     _state = result
-    output = calc_district_output(get_district(did))
+    output = calc_castle_output(get_castle(cid))
     return jsonify({"ok": True, "msg": msg, "output": output, "state": _summarize()})
 
-# ── API — Castle ────────────────────────────────────────────
+# compat aliases (for old JS calls /api/district/*)
+@app.route("/api/district/<did>")
+def api_district_compat(did):
+    return api_castle(did)
 
-@app.route("/api/castle/<cid>")
-def api_castle(cid):
-    s = gs()
-    castle = get_castle(cid)
-    if not castle:
-        return jsonify({"error": "not found"}), 404
-    faction  = s["factions"].get(castle["faction"], {})
-    districts = [d for d in s["districts"] if d["castle"] == cid]
-    return jsonify({
-        "castle": castle,
-        "faction_name": faction.get("name", castle["faction"]),
-        "districts": districts,
-    })
+@app.route("/api/district/<did>/upgrade", methods=["POST"])
+def api_upgrade_compat(did):
+    return api_upgrade(did)
 
-# ── API — Mobilize ──────────────────────────────────────────
+@app.route("/api/district/<did>/nengu", methods=["POST"])
+def api_nengu_compat(did):
+    return api_nengu(did)
+
+# ── API — Mobilize ──────────────────────────────────
 
 @app.route("/api/mobilize", methods=["POST"])
 def api_mobilize():
     global _state
-    data  = request.json or {}
-    did   = data.get("district_id")
-    mtype = data.get("type", "city")
-    d     = get_district(did)
-    if not d:
-        return jsonify({"ok": False, "msg": "找不到郡"})
+    data      = request.json or {}
+    castle_id = data.get("castle_id") or data.get("district_id")
+    mtype     = data.get("type", "city")
+    c = get_castle(castle_id)
+    if not c:
+        return jsonify({"ok": False, "msg": "找不到城"})
     s  = gs()
     pf = s["player_faction"]
-    castle = get_castle(d["castle"])
-    if not castle or castle["faction"] != pf:
-        return jsonify({"ok": False, "msg": "此郡非我方領地"})
-    result, msg = mobilize_troops(_state, did, mtype)
+    if c["faction"] != pf:
+        return jsonify({"ok": False, "msg": "此城非我方領地"})
+    result, msg = mobilize_troops(_state, castle_id, mtype)
     if result is None:
         return jsonify({"ok": False, "msg": msg})
     _state = result
     return jsonify({"ok": True, "msg": msg, "state": _summarize()})
 
-# ── API — Battle ────────────────────────────────────────────
+# ── API — Battle ────────────────────────────────────
 
 @app.route("/api/battle", methods=["POST"])
 def api_battle():
     global _state
     data    = request.json or {}
     atk_rid = data.get("attacker_id")
-    tgt_did = data.get("target_district")
+    tgt_cid = data.get("target_castle") or data.get("target_district")
     mode    = data.get("mode", "assault")
 
     atk_r = get_retainer(atk_rid)
-    tgt_d = get_district(tgt_did)
-    if not atk_r or not tgt_d:
-        return jsonify({"ok": False, "msg": "無效的武將或目標郡"})
+    tgt_c = get_castle(tgt_cid)
+    if not atk_r or not tgt_c:
+        return jsonify({"ok": False, "msg": "無效的武將或目標城"})
 
     s  = gs()
     pf = s["player_faction"]
 
+    # 鄰接檢查
     adj_ids = set()
-    for d in faction_districts(pf):
-        adj_ids.update(d.get("adjacent", []))
-    if tgt_did not in adj_ids:
-        return jsonify({"ok": False, "msg": "目標郡與我方領地不鄰接"})
+    for c in faction_castles(pf):
+        adj_ids.update(c.get("adjacent", []))
+    if tgt_cid not in adj_ids:
+        return jsonify({"ok": False, "msg": "目標城與我方領地不鄰接"})
 
-    tgt_castle = get_castle(tgt_d["castle"])
-    if not tgt_castle or tgt_castle["faction"] == pf:
-        return jsonify({"ok": False, "msg": "目標郡已是我方領地"})
+    if tgt_c["faction"] == pf:
+        return jsonify({"ok": False, "msg": "目標城已是我方領地"})
 
-    dfn_r      = get_retainer(tgt_d.get("retainer")) if tgt_d.get("retainer") else None
-    dfn_forces = tgt_castle.get("garrison", 500)
+    dfn_r      = get_retainer(tgt_c.get("retainer")) if tgt_c.get("retainer") else None
+    dfn_forces = tgt_c.get("garrison", 500)
     dfn_cmd    = dfn_r["mil"] if dfn_r else 50
 
     if mode == "siege":
@@ -426,30 +379,30 @@ def api_battle():
 
     atk_r["forces"] = result["atk_remain"]
     if result["result"] == "攻方勝利":
-        tgt_castle["faction"]  = pf
-        tgt_castle["garrison"] = result["dfn_remain"]
-        msg = f"攻佔 {tgt_d['name']}！敵守備隊 {result['dfn_remain']} 人投降。"
+        tgt_c["faction"]  = pf
+        tgt_c["garrison"] = result["dfn_remain"]
+        msg = f"攻佔 {tgt_c['name']}！敵守備隊 {result['dfn_remain']} 人投降。"
     elif result["result"] == "圍城進行中":
-        enemy_fac = tgt_castle["faction"]
+        enemy_fac = tgt_c["faction"]
         s["factions"][enemy_fac]["military_supply"] = max(
             0, s["factions"][enemy_fac]["military_supply"] - result.get("supply_drain", 50)
         )
-        msg = f"圍城中：{tgt_castle['name']} 軍糧消耗 {result.get('supply_drain',50)}。"
+        msg = f"圍城中：{tgt_c['name']} 軍糧消耗 {result.get('supply_drain',50)}。"
     else:
-        msg = f"進攻 {tgt_d['name']} 失敗，殘餘 {result['atk_remain']} 人撤回。"
+        msg = f"進攻 {tgt_c['name']} 失敗，殘餘 {result['atk_remain']} 人撤回。"
 
     s["log"].insert(0, f"【戰報】{result['summary']}")
     s["log"] = s["log"][:20]
     return jsonify({"ok": True, "result": result, "msg": msg, "state": _summarize()})
 
-# ── API — Council Decision（Feedback 3）────────────────────
+# ── API — Council Decision ──────────────────────────
 
 @app.route("/api/council-decision", methods=["POST"])
 def api_council_decision():
     global _state
-    data      = request.json or {}
-    topic_id  = data.get("topic_id")
-    choice_id = data.get("choice_id")
+    data         = request.json or {}
+    topic_id     = data.get("topic_id")
+    choice_id    = data.get("choice_id")
     choice_label = data.get("choice_label", "")
 
     if gs().get("council_decision"):
@@ -469,7 +422,7 @@ def api_council_decision():
         "state": _summarize(),
     })
 
-# ── API — Corps（Feedback 2）───────────────────────────────
+# ── API — Corps ─────────────────────────────────────
 
 @app.route("/api/corps", methods=["GET"])
 def api_get_corps():
@@ -496,15 +449,21 @@ def api_create_corps():
     if any(c.get("leader") == leader for c in s.get("corps", [])):
         return jsonify({"ok": False, "msg": f"{r['name']} 已是其他家臣團首領"})
 
+    # 過濾掉大名本城
+    valid_territories = [t for t in territories
+                         if (c := get_castle(t)) and not c.get("is_daimyo_home", False)]
+
     new_corps = {
         "id": f"corps_{uuid.uuid4().hex[:8]}",
-        "name": name,
-        "leader": leader,
-        "members": [],
-        "territories": [t for t in territories if get_castle(t)],
+        "name": name, "leader": leader, "members": [],
+        "territories": valid_territories,
     }
     _state.setdefault("corps", []).append(new_corps)
-    r["corps_id"] = new_corps["id"]
+    # 更新城的 corps_id
+    for tid in valid_territories:
+        c = get_castle(tid)
+        if c:
+            c["corps_id"] = new_corps["id"]
 
     _state["log"].insert(0, f"【家臣團】成立「{name}」，首領：{r['name']}")
     return jsonify({"ok": True, "msg": f"家臣團「{name}」已成立"})
@@ -517,7 +476,12 @@ def api_delete_corps(corps_id):
     if not corps:
         return jsonify({"ok": False, "msg": "找不到家臣團"})
 
-    # 清除成員的 corps_id
+    # 清除城的 corps_id
+    for tid in corps.get("territories", []):
+        c = get_castle(tid)
+        if c:
+            c["corps_id"] = None
+
     for mid in [corps["leader"]] + corps.get("members", []):
         r = get_retainer(mid)
         if r:
@@ -529,10 +493,9 @@ def api_delete_corps(corps_id):
 
 @app.route("/api/corps/<corps_id>/members", methods=["POST"])
 def api_corps_members(corps_id):
-    global _state
-    data       = request.json or {}
+    data        = request.json or {}
     retainer_id = data.get("retainer_id")
-    action     = data.get("action", "add")
+    action      = data.get("action", "add")
 
     s = gs()
     corps = next((c for c in s.get("corps", []) if c["id"] == corps_id), None)
@@ -553,36 +516,39 @@ def api_corps_members(corps_id):
             return jsonify({"ok": False, "msg": "非此家臣團成員"})
         corps["members"].remove(retainer_id)
         r["corps_id"] = None
-        return jsonify({"ok": True, "msg": f"{r['name']} 已從「{corps['name']}」移除"})
+        return jsonify({"ok": True, "msg": f"{r['name']} 已移除"})
 
 @app.route("/api/corps/<corps_id>/territories", methods=["POST"])
 def api_corps_territories(corps_id):
-    global _state
-    data     = request.json or {}
+    data      = request.json or {}
     castle_id = data.get("castle_id")
-    action   = data.get("action", "add")
+    action    = data.get("action", "add")
 
     s = gs()
-    corps = next((c for c in s.get("corps", []) if c["id"] == corps_id), None)
+    corps  = next((c for c in s.get("corps", []) if c["id"] == corps_id), None)
     castle = get_castle(castle_id)
     if not corps:
         return jsonify({"ok": False, "msg": "找不到家臣團"})
     if not castle:
         return jsonify({"ok": False, "msg": "找不到城"})
+    if castle.get("is_daimyo_home", False):
+        return jsonify({"ok": False, "msg": "大名本城不可分封給家臣團"})
 
     if action == "add":
         if castle_id in corps.get("territories", []):
             return jsonify({"ok": False, "msg": "已在此家臣團轄下"})
         corps.setdefault("territories", []).append(castle_id)
+        castle["corps_id"] = corps_id
         _state["log"].insert(0, f"【家臣團】{castle['name']} 分配給「{corps['name']}」")
         return jsonify({"ok": True, "msg": f"{castle['name']} 已分配給「{corps['name']}」"})
     else:
         if castle_id not in corps.get("territories", []):
             return jsonify({"ok": False, "msg": "非此家臣團轄地"})
         corps["territories"].remove(castle_id)
+        castle["corps_id"] = None
         return jsonify({"ok": True, "msg": f"{castle['name']} 已從「{corps['name']}」撤回"})
 
-# ── API — State / Load / Reset ──────────────────────────────
+# ── API — State / Save / Reset ──────────────────────
 
 @app.route("/api/state")
 def api_state():
@@ -594,7 +560,7 @@ def api_load_state():
     incoming = request.json
     if not incoming:
         return jsonify({"ok": False, "msg": "無存檔資料"})
-    for key in ("date", "factions", "castles", "districts", "retainers"):
+    for key in ("date", "factions", "castles", "retainers"):
         if key not in incoming:
             return jsonify({"ok": False, "msg": f"存檔格式錯誤（缺少 {key}）"})
     _state = copy.deepcopy(incoming)
@@ -606,7 +572,7 @@ def api_reset():
     _state = copy.deepcopy(INITIAL_STATE)
     return jsonify({"ok": True, "msg": "遊戲已重置"})
 
-# ── Helper ──────────────────────────────────────────────────
+# ── Helper ──────────────────────────────────────────
 
 def _summarize():
     s  = gs()
@@ -621,6 +587,5 @@ def _summarize():
         "player_faction": pf,
     }
 
-# ────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

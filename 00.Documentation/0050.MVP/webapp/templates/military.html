@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="main">
+  <div class="page-content">
+    <div class="page-header">
+      <span class="page-title">⚔ 軍事</span>
+      <span style="font-size:0.8rem;color:var(--text-dim)">徵兵・出兵・圍城</span>
+    </div>
+
+    <!-- 兵力配置 -->
+    <div class="section-title">🪖 各城兵力配置</div>
+    <div class="territory-grid">
+      {% for c in player_castles %}
+      <div class="territory-card">
+        <div class="tc-header">
+          <span class="tc-name">
+            {% if c.is_daimyo_home %}👑{% endif %}
+            {{ c.name }}
+          </span>
+          <span class="tc-type">{{ c.type }}</span>
+        </div>
+
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">守備兵力</span>
+          <span class="tc-stat-val">{{ c.garrison }} / {{ c.max_garrison }} 人</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">城等級</span>
+          <span class="tc-stat-val">Lv{{ c.level }}</span>
+        </div>
+        {% if c.building %}
+        <div class="tc-building-badge">🔨 建設中（{{ c.building_turns }} 月後完工）</div>
+        {% endif %}
+        {% if c.farmer_pending %}
+        <div class="tc-building-badge" style="background:rgba(39,174,96,0.12)">
+          🌾 農兵訓練中（{{ c.farmer_pending }} 月後完成）
+        </div>
+        {% endif %}
+
+        <div class="tc-actions">
+          <button class="tc-btn" onclick="doMobilize('{{ c.id }}', 'city')">
+            ⚔ 城兵徵召（50金/300人）
+          </button>
+          <button class="tc-btn" onclick="doMobilize('{{ c.id }}', 'farmer')">
+            🌾 農民兵（30金/500人・1月）
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- 出兵行動 -->
+    <div class="section-title" style="margin-top:1.5rem">⚔ 出兵行動</div>
+    {% if adj_enemy %}
+    <div class="territory-grid">
+      {% for c in adj_enemy %}
+      <div class="territory-card enemy-card">
+        <div class="tc-header">
+          <span class="tc-name">{{ c.name }}</span>
+          <span class="tc-type">{{ c.type }}</span>
+        </div>
+        <div class="tc-castle-tag">{{ c.province }}　敵方（{{ state.factions[c.faction].name }}）</div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">守備兵力</span>
+          <span class="tc-stat-val">{{ c.garrison }} 人</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">城等級</span>
+          <span class="tc-stat-val">Lv{{ c.level }}</span>
+        </div>
+        <div class="tc-actions">
+          <button class="tc-btn enemy-btn" onclick="openEnemyCastleAttack('{{ c.id }}', '{{ c.name }}')">
+            ⚔ 出兵攻打
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:2rem;text-align:center;color:var(--text-dim)">
+      目前無鄰接敵城可供出兵。拓展領土後，此處將出現可攻打的目標。
+    </div>
+    {% endif %}
+
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;align-items:center">
+      <button class="end-turn-btn js-end-turn" style="width:auto;padding:0.6rem 2rem">⏭ 結束本月</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function doMobilize(castleId, type) {
+  const label = type === 'city' ? '城兵徵召' : '農民兵徵集';
+  fetch('/api/mobilize', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({castle_id: castleId, type})
+  })
+  .then(r => r.json())
+  .then(data => {
+    showToast(data.msg || (data.ok ? label+'成功' : label+'失敗'));
+    if (data.ok) setTimeout(() => location.reload(), 1200);
+  })
+  .catch(() => showToast('操作失敗'));
+}
+
+function openEnemyCastleAttack(castleId, castleName) {
+  openDistrictModal(castleId);
+}
+</script>
+{% endblock %}

@@ -2,134 +2,93 @@
 {% block body %}
 <div class="main">
   <div class="page-content">
+    <div class="page-header">
+      <span class="page-title">📜 政務</span>
+      <span style="font-size:0.8rem;color:var(--text-dim)">領地治理・評定會議</span>
+    </div>
 
-    <!-- 直臣對話式政務選單（Feedback 5） -->
-    <div class="politics-dialogue-layout">
-
-      <!-- LEFT: 直臣立繪 + 對話框 -->
-      <div class="advisor-panel">
-        <div class="advisor-portrait-box">
-          <div class="advisor-portrait-inner">
-            <div class="advisor-kanji">家</div>
-            <div class="advisor-mon">✦</div>
-          </div>
-          <div class="advisor-name-plate">
-            <div class="adv-name" id="adv-name">{{ advisor.name }}</div>
-            <div class="adv-rank">{{ advisor.rank }}　{{ advisor.lineage }}臣</div>
-          </div>
+    <!-- ── 領地治理 ── -->
+    <div class="section-title">🏯 領地治理</div>
+    <div class="territory-grid">
+      {% for c in player_castles %}
+      {% set corps = corps_map[c.id] %}
+      <div class="territory-card {{ 'corps-territory' if corps }}" data-castle="{{ c.id }}">
+        <div class="tc-header">
+          <span class="tc-name">
+            {% if c.is_daimyo_home %}👑{% endif %}
+            {{ c.name }}
+          </span>
+          <span class="tc-type">{{ c.type }}</span>
         </div>
 
-        <div class="advisor-dialogue" id="adv-dialogue">
-          「主公，本月欲作何事？請示下。」
+        {% if corps %}
+        <div class="corps-owned-tag">🏴 {{ corps.corps_name }}（{{ corps.leader_name }}）轄</div>
+        {% endif %}
+
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">設施</span>
+          <span class="tc-stat-val">{{ c.facility_name }} Lv{{ c.facility_level }}/{{ c.facility_max }}</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">年貢率</span>
+          <span class="tc-stat-val">{{ c.nengu_rate }}%</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">本月金收入</span>
+          <span class="tc-stat-val">{{ outputs[c.id].gold }} 金</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">本月軍糧</span>
+          <span class="tc-stat-val">{{ outputs[c.id].supply }}</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">守備兵力</span>
+          <span class="tc-stat-val">{{ c.garrison }} 人</span>
+        </div>
+        <div class="tc-stat-row">
+          <span class="tc-stat-label">管理家臣</span>
+          <span class="tc-stat-val">
+            {% if c.retainer %}
+              {% for r in state.retainers %}{% if r.id == c.retainer %}{{ r.name }}{% endif %}{% endfor %}
+            {% else %}（未分封）{% endif %}
+          </span>
         </div>
 
-        <div class="advisor-loyalty-bar">
-          <span style="font-size:0.7rem;color:var(--text-dim)">忠誠度</span>
-          <div style="flex:1;height:4px;background:#2a2a2a;border-radius:2px;margin:0 0.5rem">
-            <div style="height:4px;border-radius:2px;background:{{ loyalty_color(advisor.loyalty) }};width:{{ advisor.loyalty }}%"></div>
-          </div>
-          <span style="font-size:0.7rem;color:{{ loyalty_color(advisor.loyalty) }}">{{ advisor.loyalty_label }}</span>
-        </div>
+        {% if c.building %}
+        <div class="tc-building-badge">🔨 建設中（{{ c.building_turns }} 月後完工）</div>
+        {% endif %}
 
-        <!-- 回合資訊 -->
-        <div class="advisor-state-box">
-          <div class="asb-row"><span>金錢</span><span style="color:var(--gold-light)">{{ state.factions[state.player_faction].gold }} 金</span></div>
-          <div class="asb-row"><span>軍糧</span><span>{{ state.factions[state.player_faction].military_supply }}</span></div>
-          <div class="asb-row"><span>回合</span><span>第 {{ state.turn }} 月</span></div>
+        <div class="tc-actions">
+          {% if corps %}
+          <span class="tc-corps-lock">🔒 家臣團管轄，直接管理受限</span>
+          {% else %}
+          <button class="tc-btn" onclick="event.stopPropagation(); openDistrictModal('{{ c.id }}')">📋 詳情/升級/年貢</button>
+          <button class="tc-btn" onclick="event.stopPropagation(); openDistrictModal('{{ c.id }}')">⚔ 徵兵</button>
+          {% endif %}
         </div>
       </div>
+      {% endfor %}
+    </div>
 
-      <!-- RIGHT: 指令選單 -->
-      <div class="politics-command-panel">
-        <div class="pcp-title">■ 本月政令</div>
-
-        <!-- Category grid -->
-        <div id="cat-grid">
-          {% for cat in categories %}
-          <div class="cmd-card {{ 'cmd-endturn' if cat.id == 'endturn' }}"
-               onclick="selectCategory('{{ cat.id }}')">
-            <div class="cmd-icon">{{ cat.icon }}</div>
-            <div class="cmd-name">{{ cat.name }}</div>
-            <div class="cmd-hint">{{ cat.hint }}</div>
-          </div>
-          {% endfor %}
-        </div>
-
-        <!-- Sub-options panel (shown after category click) -->
-        <div id="sub-panel" style="display:none">
-          <button class="back-btn" onclick="showCategories()">◀ 返回選單</button>
-          <div class="sub-cat-title" id="sub-cat-title"></div>
-          <div id="sub-option-list"></div>
+    <!-- ── 評定會議快捷 ── -->
+    <div class="section-title" style="margin-top:2rem">🏛 評定會議</div>
+    <div class="politics-council-banner">
+      <div>
+        <div style="font-size:1rem;color:var(--text-gold);margin-bottom:0.4rem">本月議題已備齊，請主公入席</div>
+        <div style="font-size:0.82rem;color:var(--text-dim)">
+          召集宿老・家老評議本月要事，裁決將影響武將忠誠度（支持+3・反對-2・延議-1）。
         </div>
       </div>
+      <a href="{{ url_for('council') }}" class="end-turn-btn"
+         style="width:auto;padding:0.6rem 1.5rem;text-decoration:none;text-align:center;flex-shrink:0">
+        召開評定 →
+      </a>
+    </div>
 
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;align-items:center">
+      <button class="end-turn-btn js-end-turn" style="width:auto;padding:0.6rem 2rem">⏭ 結束本月</button>
+      <button onclick="saveGame()" style="padding:0.6rem 1rem;background:rgba(201,162,39,0.1);border:1px solid var(--border-hi);color:var(--text-gold);font-family:inherit;font-size:0.85rem;cursor:pointer;border-radius:2px">💾 存檔</button>
     </div>
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-const CATEGORIES = {{ categories_json | tojson }};
-
-const ADV_LINES = {
-  default:    '「主公，本月欲作何事？請示下。」',
-  military:   '「武力乃亂世之根本。本月軍事布置，主公有何決斷？」',
-  territory:  '「民富則兵強。領地建設之事，請主公指示。」',
-  retainer:   '「家臣乃主公手足，人事安排一旦有失，大事難成。」',
-  diplomacy:  '「縱橫合縱，在此亂世亦不可缺。外交之事如何？」',
-  intel:      '「知己知彼，方能百戰不殆。情報之事，主公如何定奪？」',
-  council:    '「召集眾臣共議，聽取眾意而後裁決——此乃明主之道。」',
-  ceremony:   '「禮儀乃天下之本，民心向背亦賴於此。」',
-  postwar:    '「勝戰之後，妥善處置，方可鞏固戰果。」',
-  endturn:    '「如此，本月政務已畢。進入下一回合，請主公準備。」',
-};
-
-function selectCategory(id) {
-  if (id === 'endturn') {
-    document.getElementById('adv-dialogue').textContent = ADV_LINES.endturn;
-    endTurn();
-    return;
-  }
-  const cat = CATEGORIES.find(c => c.id === id);
-  if (!cat) return;
-
-  document.getElementById('adv-dialogue').textContent = ADV_LINES[id] || ADV_LINES.default;
-  document.getElementById('sub-cat-title').textContent = cat.icon + ' ' + cat.name;
-
-  const listEl = document.getElementById('sub-option-list');
-  listEl.innerHTML = '';
-
-  cat.subs.forEach(sub => {
-    const btn = document.createElement('div');
-    btn.className = 'sub-option-btn' + (sub.enabled ? '' : ' sub-disabled');
-    btn.innerHTML = `
-      <div class="sob-name">${sub.name}</div>
-      <div class="sob-desc">${sub.desc}</div>
-      ${sub.enabled ? '' : '<div class="sob-na">（本版本尚未開放）</div>'}
-    `;
-    if (sub.enabled) {
-      btn.onclick = () => handleSubAction(sub);
-    }
-    listEl.appendChild(btn);
-  });
-
-  document.getElementById('cat-grid').style.display = 'none';
-  document.getElementById('sub-panel').style.display = '';
-}
-
-function showCategories() {
-  document.getElementById('cat-grid').style.display = '';
-  document.getElementById('sub-panel').style.display = 'none';
-  document.getElementById('adv-dialogue').textContent = ADV_LINES.default;
-}
-
-function handleSubAction(sub) {
-  if (sub.url) {
-    window.location.href = sub.url;
-  } else if (sub.toast) {
-    showToast(sub.toast);
-  }
-}
-</script>
 {% endblock %}

@@ -547,3 +547,337 @@ body {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ══════════════════════════════════════════════════
+   NEW STYLES — Feedback 2nd round
+   ══════════════════════════════════════════════════ */
+
+/* ── TOPBAR BACK BUTTON ──────────────────────────── */
+.topbar-back-btn {
+  padding: 0.25rem 0.8rem; font-size: 0.78rem;
+  background: rgba(201,162,39,0.08); border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: 2px; text-decoration: none;
+  transition: all 0.15s; white-space: nowrap;
+}
+.topbar-back-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── SUBNAV (sub-pages) ──────────────────────────── */
+.subnav {
+  background: #0a0a0a; border-bottom: 1px solid var(--border);
+  display: flex; gap: 0;
+}
+.subnav a {
+  display: block; padding: 0.55rem 1.2rem; font-size: 0.82rem;
+  color: var(--text-dim); text-decoration: none;
+  border-right: 1px solid var(--border); letter-spacing: 0.06em;
+  transition: all 0.15s;
+}
+.subnav a:hover  { background: var(--accent); color: var(--text-main); }
+.subnav a.active { background: var(--accent); color: var(--gold); border-bottom: 2px solid var(--gold); }
+
+/* ── ADVISOR SIDEBAR (地圖頁左欄) ─────────────────── */
+.advisor-sidebar {
+  width: 210px; min-width: 210px;
+  background: var(--bg-panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto; gap: 0;
+}
+
+/* Faction chips (compact) */
+.faction-chip {
+  padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+}
+.faction-chip.oda     { border-left: 3px solid var(--red-oda-hi); }
+.faction-chip.imagawa { border-left: 3px solid var(--blue-ima-hi); }
+.fc-chip-name { font-weight: 700; display: block; margin-bottom: 0.15rem; }
+.faction-chip.oda .fc-chip-name     { color: var(--red-oda-hi); }
+.faction-chip.imagawa .fc-chip-name { color: var(--blue-ima-hi); }
+.fc-chip-stat   { color: var(--text-dim); display: block; }
+.fc-chip-forces { color: var(--text-main); display: block; }
+
+/* Advisor card */
+.advisor-card {
+  padding: 0.8rem; border-bottom: 1px solid var(--border);
+  background: rgba(201,162,39,0.04);
+}
+.advisor-portrait {
+  display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;
+}
+.advisor-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #1a0a00, #3a2010);
+  border: 2px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 900; color: var(--gold);
+}
+.advisor-meta { flex: 1; min-width: 0; }
+.advisor-name { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
+.advisor-rank { font-size: 0.68rem; color: var(--text-dim); }
+.advisor-bubble {
+  background: rgba(201,162,39,0.07); border: 1px solid var(--border);
+  border-radius: 4px; padding: 0.5rem 0.7rem;
+}
+.advisor-bubble-text {
+  font-size: 0.78rem; color: var(--text-main); line-height: 1.7;
+  font-style: italic; min-height: 2.5rem; transition: all 0.2s;
+}
+
+/* Advisor nav buttons */
+.advisor-nav {
+  display: flex; flex-direction: column; flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+.advisor-nav-btn {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.6rem 0.8rem; text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s; cursor: pointer;
+}
+.advisor-nav-btn:hover { background: var(--accent); }
+.advisor-nav-btn:hover .anb-title { color: var(--gold); }
+.anb-icon  { font-size: 1.1rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
+.anb-text  { flex: 1; min-width: 0; }
+.anb-title { font-size: 0.85rem; font-weight: 700; color: var(--text-main); transition: color 0.15s; }
+.anb-hint  { font-size: 0.68rem; color: var(--text-dim); }
+.anb-arrow { font-size: 0.65rem; color: var(--text-dim); }
+
+/* Advisor action buttons */
+.advisor-actions {
+  padding: 0.8rem; display: flex; flex-direction: column; gap: 0.4rem;
+}
+
+/* ── MAP: Castle type tag, province labels ─────────── */
+.castle-type-tag {
+  font-size: 0.6rem; color: var(--text-dim);
+  background: rgba(0,0,0,0.5); padding: 0 4px; border-radius: 2px;
+  margin-top: 0.1rem; white-space: nowrap;
+}
+.daimyo-home-badge {
+  position: absolute; top: -10px; right: -10px; font-size: 0.75rem;
+  text-shadow: 0 1px 4px rgba(0,0,0,.9);
+}
+.province-label {
+  position: absolute; font-size: 0.7rem; color: rgba(201,162,39,0.35);
+  letter-spacing: 0.2em; pointer-events: none; user-select: none;
+  font-weight: 900; text-transform: uppercase;
+}
+.province-label.owari  { top: 4%; left: 4%; }
+.province-label.mikawa { top: 4%; right: 5%; }
+
+/* ── RIGHT PANEL: castle rows (一城一郡） ─────────── */
+.rp-castle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.4rem 0.5rem; margin-bottom: 0.25rem;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 3px; cursor: pointer; transition: border-color 0.15s;
+}
+.rp-castle-row:hover { border-color: var(--gold); }
+.rp-castle-name { font-size: 0.82rem; font-weight: 700; }
+.rp-castle-meta { font-size: 0.68rem; color: var(--text-dim); }
+
+/* ── SECTION TITLE ───────────────────────────────── */
+.section-title {
+  font-size: 0.78rem; color: var(--text-gold); letter-spacing: 0.12em;
+  border-bottom: 1px solid var(--border); padding-bottom: 0.3rem;
+  margin-bottom: 0.8rem; margin-top: 0.5rem;
+}
+
+/* ── POLITICS: territory card corps state ──────────── */
+.territory-card.corps-territory { border-color: rgba(155,89,182,0.4); }
+.territory-card.corps-territory:hover { border-color: #9b59b6; }
+.corps-owned-tag {
+  font-size: 0.72rem; color: #9b59b6; margin-bottom: 0.4rem;
+  background: rgba(155,89,182,0.08); padding: 0.2rem 0.5rem;
+  border-radius: 2px; border: 1px solid rgba(155,89,182,0.3);
+}
+.tc-corps-lock {
+  font-size: 0.7rem; color: #9b59b6; font-style: italic;
+}
+
+/* Corps notice in territory modal */
+.corps-notice {
+  background: rgba(155,89,182,0.1); border: 1px solid rgba(155,89,182,0.35);
+  border-radius: 4px; padding: 0.6rem 0.8rem; margin-bottom: 0.8rem;
+  font-size: 0.78rem; color: #c39bd3; line-height: 1.7;
+}
+
+/* ── POLITICS: council banner ────────────────────── */
+.politics-council-banner {
+  background: rgba(201,162,39,0.06); border: 1px solid var(--border-hi);
+  border-radius: 4px; padding: 1rem 1.2rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+}
+
+/* ── RETAINER CARD GRID ──────────────────────────── */
+.retainer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 1rem; }
+.retainer-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1rem;
+}
+.rc-header { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.6rem; }
+.rc-name   { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+.rc-rank   { font-size: 0.7rem; color: var(--text-dim); }
+.loyalty-bar-bg   { height: 4px; background: #2a2a2a; border-radius: 2px; margin-bottom: 0.3rem; }
+.loyalty-bar-fill { height: 4px; border-radius: 2px; }
+.rc-loyalty-row { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.3rem; }
+.rc-loyalty-val { color: var(--text-dim); }
+.rc-forces   { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.2rem; }
+.rc-location { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+.rc-stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.25rem; margin-bottom: 0.5rem; }
+.rc-stat-item { text-align: center; }
+.rc-stat-label { font-size: 0.6rem; color: var(--text-dim); display: block; }
+.rc-stat-bar-bg   { height: 3px; background: #2a2a2a; border-radius: 2px; margin: 1px 0; }
+.rc-stat-bar-fill { height: 3px; background: var(--gold); border-radius: 2px; }
+.rc-stat-val { font-size: 0.65rem; color: var(--text-main); }
+.rc-eval-row { display: flex; gap: 0.2rem; flex-wrap: wrap; }
+.rc-eval-badge { font-size: 0.65rem; padding: 0.05rem 0.3rem; border-radius: 2px; }
+
+/* ── TAB SWITCHER ────────────────────────────────── */
+.tab-switcher { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+.tab-btn {
+  padding: 0.4rem 1.2rem; font-size: 0.82rem;
+  background: var(--bg-card); border: 1px solid var(--border);
+  color: var(--text-dim); text-decoration: none; border-radius: 3px;
+  transition: all 0.15s;
+}
+.tab-btn:hover  { border-color: var(--gold); color: var(--gold); }
+.tab-btn.active { background: var(--accent); border-color: var(--gold); color: var(--gold); }
+
+/* Faction switcher */
+.faction-switcher { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+.faction-switcher a {
+  padding: 0.35rem 1rem; font-size: 0.8rem;
+  background: var(--bg-card); border: 1px solid var(--border);
+  color: var(--text-dim); text-decoration: none; border-radius: 3px;
+  transition: all 0.15s;
+}
+.faction-switcher a.active { background: var(--accent); border-color: var(--gold); color: var(--gold); }
+
+/* ── CORPS MANAGEMENT ────────────────────────────── */
+.corps-create-form {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1rem 1.2rem; margin-bottom: 1rem;
+}
+.corps-form-row {
+  display: flex; align-items: flex-start; gap: 0.8rem;
+  margin-bottom: 0.7rem; font-size: 0.82rem;
+}
+.corps-form-row label { width: 3rem; flex-shrink: 0; color: var(--text-dim); padding-top: 0.3rem; }
+.corps-input {
+  flex: 1; background: var(--bg-panel); border: 1px solid var(--border);
+  color: var(--text-main); font-family: inherit; font-size: 0.82rem;
+  padding: 0.4rem 0.6rem; border-radius: 2px;
+}
+.corps-input:focus { border-color: var(--gold); outline: none; }
+.corps-castle-checkboxes { display: flex; flex-direction: column; gap: 0.3rem; }
+.corps-castle-check { font-size: 0.8rem; color: var(--text-dim); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+
+.corps-card {
+  background: var(--bg-card); border: 1px solid var(--border-hi);
+  border-radius: 4px; padding: 1rem 1.2rem; margin-bottom: 0.8rem;
+}
+.corps-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+.corps-card-name { font-size: 0.95rem; font-weight: 700; color: var(--gold); }
+.corps-dissolve-btn {
+  padding: 0.2rem 0.7rem; font-size: 0.72rem; font-family: inherit;
+  background: rgba(231,76,60,0.1); border: 1px solid #c0392b;
+  color: #e74c3c; cursor: pointer; border-radius: 2px; transition: all 0.15s;
+}
+.corps-dissolve-btn:hover { background: rgba(231,76,60,0.25); }
+.corps-info-row { display: flex; align-items: flex-start; gap: 0.8rem; font-size: 0.8rem; margin-bottom: 0.4rem; }
+.corps-info-label { width: 5.5rem; flex-shrink: 0; color: var(--text-dim); }
+.corps-info-val   { flex: 1; color: var(--text-main); }
+.corps-territory-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.corps-territory-tag {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: rgba(155,89,182,0.12); border: 1px solid rgba(155,89,182,0.4);
+  color: #c39bd3; font-size: 0.72rem; padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+}
+.corps-remove-territory-btn {
+  background: none; border: none; color: #9b59b6; cursor: pointer;
+  font-size: 0.72rem; padding: 0 0.1rem; line-height: 1;
+}
+.corps-add-territory {
+  display: flex; gap: 0.4rem; margin-top: 0.5rem;
+  padding-top: 0.5rem; border-top: 1px solid var(--border);
+}
+
+/* ── COUNCIL (new layout styles) ────────────────── */
+.council-topic-card {
+  background: var(--bg-card); border: 1px solid var(--border-hi);
+  border-radius: 4px; padding: 1rem 1.2rem; margin-bottom: 1.2rem;
+}
+.council-topic-label { font-size: 0.7rem; color: var(--text-gold); letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+.council-topic-title { font-size: 1.05rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.4rem; }
+.council-topic-desc  { font-size: 0.82rem; color: var(--text-dim); line-height: 1.7; }
+.council-stances { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.stance-row {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0.6rem 1rem;
+}
+.stance-retainer { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; }
+.stance-name { font-size: 0.85rem; font-weight: 700; }
+.stance-rank-badge {
+  font-size: 0.68rem; padding: 0.05rem 0.4rem; border-radius: 2px;
+  background: rgba(201,162,39,0.1); border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.stance-content { display: flex; align-items: flex-start; gap: 0.6rem; }
+.stance-comment { font-size: 0.76rem; color: var(--text-dim); font-style: italic; line-height: 1.6; flex: 1; }
+.stance-tag {
+  padding: 0.1rem 0.55rem; border-radius: 2px; font-size: 0.72rem;
+  font-weight: 700; white-space: nowrap; flex-shrink: 0;
+}
+.tag-主戰, .tag-主戦, .tag-主張, .tag-強烈, .tag-支持 { background: rgba(39,174,96,0.2); color: #27ae60; border: 1px solid #27ae60; }
+.tag-反對, .tag-反対, .tag-謹慎, .tag-強硬 { background: rgba(231,76,60,0.15); color: #e74c3c; border: 1px solid #e74c3c; }
+.tag-中立, .tag-default { background: rgba(149,165,166,0.15); color: #95a5a6; border: 1px solid #555; }
+.tag-外交 { background: rgba(52,152,219,0.15); color: #3498db; border: 1px solid #2980b9; }
+
+.council-choices { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.choice-btn {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0.7rem 1rem; text-align: left;
+  font-family: inherit; cursor: pointer; transition: all 0.15s;
+}
+.choice-btn:hover { border-color: var(--gold); background: var(--accent); }
+.choice-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.choice-btn-label { font-size: 0.9rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.2rem; }
+.choice-btn-desc  { font-size: 0.75rem; color: var(--text-dim); }
+.decision-made {
+  background: rgba(39,174,96,0.1); border: 1px solid #27ae60;
+  border-radius: 4px; padding: 0.8rem 1rem; margin-bottom: 1rem;
+}
+.decision-label  { font-size: 0.72rem; color: var(--green); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+.decision-choice { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
+
+.council-main  { flex: 1; min-width: 0; }
+.council-aside {
+  width: 240px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1rem; height: fit-content;
+}
+.aside-title {
+  font-size: 0.72rem; color: var(--text-gold); letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-bottom: 0.6rem;
+}
+.aside-rule { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.3rem; }
+.aside-loyalty-row {
+  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; font-size: 0.75rem;
+}
+.aside-loyalty-name   { width: 5rem; flex-shrink: 0; color: var(--text-dim); }
+.aside-loyalty-bar-bg { flex: 1; height: 4px; background: #2a2a2a; border-radius: 2px; }
+.aside-loyalty-bar-fill { height: 4px; border-radius: 2px; }
+.aside-loyalty-val { width: 2rem; text-align: right; color: var(--text-main); }
+.decision-change-row {
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;
+  padding: 0.2rem 0; border-bottom: 1px solid #1a1a1a;
+}
+
+/* ── ENEMY CARD (Military page) ──────────────────── */
+.enemy-card { border-color: rgba(41,128,185,0.35) !important; }
+.enemy-card:hover { border-color: var(--blue-ima-hi) !important; }
+.enemy-btn {
+  background: rgba(231,76,60,0.1) !important; border-color: var(--red-oda) !important;
+  color: var(--red-oda-hi) !important;
+}
+.enemy-btn:hover { background: rgba(231,76,60,0.25) !important; }

@@ -1,5 +1,5 @@
 /* 《戰國三代記》MVP Webapp — game.js
-   遵照 PM006 UC-004/010/011/012/020/021/022/023/024 */
+   [重構] 一城一郡：district → castle 統一，家臣團轄地限制 */
 
 'use strict';
 
@@ -50,7 +50,6 @@ function bindEndTurn() {
 async function endTurn() {
   const btns = document.querySelectorAll('.end-turn-btn, .js-end-turn');
   btns.forEach(b => { b.disabled = true; b.textContent = '結算中…'; });
-
   try {
     const data = await apiFetch('/api/end-turn', 'POST');
     if (data.ok) {
@@ -59,11 +58,11 @@ async function endTurn() {
       showTurnOverlay(data.state);
     } else {
       showToast('結算失敗');
-      btns.forEach(b => { b.disabled = false; b.textContent = '⏭ 結束回合'; });
+      btns.forEach(b => { b.disabled = false; b.textContent = '⏭ 結束本月'; });
     }
   } catch(e) {
     showToast('結算失敗：' + e.message);
-    btns.forEach(b => { b.disabled = false; b.textContent = '⏭ 結束回合'; });
+    btns.forEach(b => { b.disabled = false; b.textContent = '⏭ 結束本月'; });
   }
 }
 
@@ -72,7 +71,6 @@ function showTurnOverlay(state) {
   const title   = document.getElementById('turn-overlay-title');
   const logEl   = document.getElementById('turn-overlay-log');
   if (!overlay) { location.reload(); return; }
-
   title.textContent = `回合結算 — 永祿${state.date.year - 1557}年（${state.date.year}）${state.date.month}月`;
   const logItems = (state.log || []).slice(0, 8);
   logEl.innerHTML = logItems.length
@@ -87,41 +85,9 @@ function closeTurnOverlay() {
   location.reload();
 }
 
-// ── 城詳情 Modal（含轄下郡列表） ────────────────────────────
-function openCastleModal(castleId) {
-  apiFetch(`/api/castle/${castleId}`)
-    .then(data => {
-      document.getElementById('cm-title').textContent = data.castle.name;
-      document.getElementById('cm-meta').textContent =
-        `${data.castle.province}　${data.faction_name}`;
-      document.getElementById('cm-level').textContent = `Lv${data.castle.level}`;
-      document.getElementById('cm-garrison').textContent = `${data.castle.garrison} 人`;
-
-      const listEl = document.getElementById('cm-district-list');
-      listEl.innerHTML = data.districts.map(d => `
-        <div class="cml-district-row">
-          <div>
-            <div class="cml-name">${d.name}</div>
-            <div class="cml-facility">${d.facility_name} Lv${d.facility_level}
-              ${d.building ? ` <span style="color:#3498db">（建設中 ${d.building_turns}月）</span>` : ''}
-            </div>
-            <div class="cml-type">${d.type}　年貢 ${d.nengu_rate}%</div>
-          </div>
-          <button class="btn-manage" onclick="closeCastleModal(); openDistrictModal('${d.id}')">管理 ▶</button>
-        </div>
-      `).join('');
-
-      document.getElementById('castle-modal').classList.add('open');
-    })
-    .catch(e => showToast('載入失敗：' + e.message));
-}
-
-function closeCastleModal() {
-  document.getElementById('castle-modal').classList.remove('open');
-}
-
-// ── 郡詳情 Modal（UC-010/011/012/020/021/022/023） ─────────
-let _currentDistrictId = null;
+// ── 城詳情 Modal（UC-010/011/012/020/021/022/023）─────────
+// 一城一郡：district modal = castle modal，統一入口
+let _currentCastleId = null;
 let _attackMode = 'assault';
 
 function setAttackMode(mode) {
@@ -130,101 +96,76 @@ function setAttackMode(mode) {
   document.getElementById('tab-siege').classList.toggle('active', mode === 'siege');
   const desc = document.getElementById('dm-mode-desc');
   if (mode === 'assault') {
-    desc.textContent = '攻郡野戰：立即與守方決戰，勝者取得郡領地。';
-    document.getElementById('dm-attack-btn').textContent = '⚔ 出兵攻郡';
+    desc.textContent = '野戰：立即決戰，勝者取得此城。';
+    document.getElementById('dm-attack-btn').textContent = '⚔ 出兵攻城';
   } else {
-    desc.textContent = '圍城戰：每回合消耗守方軍糧，軍糧歸零時城池陷落（UC-023）。';
+    desc.textContent = '圍城：每回合消耗守方軍糧，軍糧歸零時城池陷落。';
     document.getElementById('dm-attack-btn').textContent = '🏯 開始圍城';
   }
 }
 
-function openDistrictModal(districtId) {
-  _currentDistrictId = districtId;
+function openDistrictModal(castleId) {
+  _currentCastleId = castleId;
   _attackMode = 'assault';
 
-  apiFetch(`/api/district/${districtId}`)
+  apiFetch(`/api/castle/${castleId}`)
     .then(data => {
-      const d   = data.district;
-      const pf  = playerFaction();
+      const d  = data.castle;      // castle 物件（同時包含 district 屬性）
+      const pf = playerFaction();
       const own = (data.castle_faction === pf);
 
+      // --- Header ---
+      document.getElementById('dm-title').textContent = d.name;
+      document.getElementById('dm-type').textContent  =
+        `${d.type}　${d.province}　${own ? '我方' : '敵方（' + data.castle_faction + '）'}`;
+
       // --- Basic info ---
-      document.getElementById('dm-title').textContent   = d.name;
-      document.getElementById('dm-type').textContent    = `${d.type}　所屬：${data.castle_name}（${data.castle_faction === pf ? '我方' : '敵方'}）`;
-      document.getElementById('dm-castle').textContent  = data.castle_name;
+      document.getElementById('dm-level').textContent   = `Lv${d.level}`;
+      document.getElementById('dm-garrison').textContent= `${d.garrison} 人`;
       document.getElementById('dm-facility').textContent = d.building
-        ? `${d.facility_name} Lv${d.facility_level}（建設中 ${d.building_turns} 月後完工）`
+        ? `${d.facility_name} Lv${d.facility_level}（建設中 ${d.building_turns}月後）`
         : `${d.facility_name} Lv${d.facility_level}`;
       document.getElementById('dm-gold-out').textContent   = `${data.output.gold} 金/月`;
       document.getElementById('dm-supply-out').textContent = `${data.output.supply} 糧/月`;
       document.getElementById('dm-retainer').textContent   = data.retainer ? data.retainer.name : '（未分封）';
 
-      // --- Player sections ---
-      const playerSec = document.getElementById('dm-player-section');
-      const atkSec    = document.getElementById('dm-attack-section');
+      // --- Corps / Daimyo notice ---
+      const noticeEl     = document.getElementById('dm-corps-notice');
+      const noticeTextEl = document.getElementById('dm-corps-notice-text');
+      const playerSec    = document.getElementById('dm-player-section');
+      const atkSec       = document.getElementById('dm-attack-section');
 
       if (own) {
-        playerSec.style.display = '';
-        atkSec.style.display    = 'none';
+        atkSec.style.display = 'none';
 
-        // Nengu slider
-        const slider   = document.getElementById('dm-nengu-slider');
-        const nenguVal = document.getElementById('dm-nengu-val');
-        const nenguPrev= document.getElementById('dm-nengu-preview');
-        slider.value = d.nengu_rate;
-        nenguVal.textContent  = d.nengu_rate + '%';
-        nenguPrev.textContent = `預估本月金收入：${data.output.gold} 金`;
-        slider.oninput = () => {
-          nenguVal.textContent = slider.value + '%';
-          const baseGold = data.output.gold / (d.nengu_rate / 100);
-          nenguPrev.textContent = `預估本月金收入：約 ${Math.round(baseGold * (slider.value / 100))} 金`;
-        };
-        slider.onchange = () => {
-          apiFetch(`/api/district/${districtId}/nengu`, 'POST', { rate: parseInt(slider.value) })
-            .then(r => { if (r.ok) showToast(r.msg); else showToast(r.msg); })
-            .catch(() => showToast('年貢調整失敗'));
-        };
-
-        // Upgrade card
-        const upCard = document.getElementById('dm-upgrade-card');
-        const upBtn  = document.getElementById('dm-upgrade-btn');
-        if (data.next_upgrade) {
-          const spec = data.next_upgrade;
-          document.getElementById('dm-upgrade-name').textContent =
-            `升級 → ${spec.name}（Lv${spec.level}）`;
-          document.getElementById('dm-upgrade-meta').textContent =
-            `費用：${spec.cost} 金　建設時間：${spec.turns} 月` +
-            (spec.gold_out ? `　完工後月收約 +${Math.round(spec.gold_out * d.nengu_rate / 100)} 金` : '');
-          upBtn.disabled = d.building || data.player_gold < spec.cost;
-          upBtn.textContent = d.building ? '設施建設中' : data.player_gold < spec.cost ? '金錢不足' : '發出建設命令';
-          upCard.style.display = '';
-          upBtn.onclick = () => doUpgrade(districtId);
+        // 家臣團轄地 OR 大名本城 → 限制直接管理
+        if (data.is_corps_territory) {
+          noticeEl.style.display = '';
+          noticeTextEl.innerHTML =
+            `🏴 此城由家臣團「${data.corps_info.corps_name}」（首領：${data.corps_info.leader_name}）統轄。<br>` +
+            `直接管理（年貢/升級/徵兵）已委任首領代理，玩家不可直接操作。`;
+          playerSec.style.display = 'none';
+        } else if (data.is_daimyo_home) {
+          noticeEl.style.display = '';
+          noticeTextEl.textContent = '👑 此為大名本城，年貢・設施・徵兵均可直接管理。此城不可分封給家臣團。';
+          noticeEl.style.borderColor = 'rgba(201,162,39,0.4)';
+          playerSec.style.display = '';
+          _bindOwnControls(castleId, d, data);
         } else {
-          upCard.style.display = 'none';
+          noticeEl.style.display = 'none';
+          playerSec.style.display = '';
+          _bindOwnControls(castleId, d, data);
         }
 
-        // Mobilize (UC-020 / UC-021)
-        const castleData = data.castle_data;
-        const cityBtn   = document.getElementById('dm-city-btn');
-        const farmerBtn = document.getElementById('dm-farmer-btn');
-        const mobStatus = document.getElementById('dm-mobilize-status');
-        cityBtn.disabled   = false;
-        farmerBtn.disabled = false;
-        mobStatus.textContent = '';
-        cityBtn.onclick   = () => doMobilize(districtId, 'city');
-        farmerBtn.onclick = () => doMobilize(districtId, 'farmer');
-
       } else {
-        // Enemy district
+        // 敵方城
+        noticeEl.style.display = 'none';
         playerSec.style.display = 'none';
         atkSec.style.display    = '';
-
-        // Reset attack mode UI
         setAttackMode('assault');
         document.getElementById('dm-battle-result').style.display = 'none';
         document.getElementById('dm-attack-btn').style.display    = '';
 
-        // Populate attacker select
         apiFetch('/api/state').then(st => {
           const opts = st.retainers.filter(r => r.faction === pf && r.rank !== '大名' && r.forces > 0);
           const sel  = document.getElementById('dm-attacker-select');
@@ -235,28 +176,80 @@ function openDistrictModal(districtId) {
         });
 
         document.getElementById('dm-attack-btn').onclick = () =>
-          doAction(districtId, document.getElementById('dm-attacker-select').value);
+          doAction(castleId, document.getElementById('dm-attacker-select').value);
       }
 
       document.getElementById('district-modal').classList.add('open');
     })
     .catch(e => {
       console.error('openDistrictModal failed:', e);
-      showToast('載入郡詳情失敗：' + e.message);
+      showToast('載入城詳情失敗：' + e.message);
     });
+}
+
+function _bindOwnControls(castleId, d, data) {
+  // Nengu slider
+  const slider    = document.getElementById('dm-nengu-slider');
+  const nenguVal  = document.getElementById('dm-nengu-val');
+  const nenguPrev = document.getElementById('dm-nengu-preview');
+  slider.value = d.nengu_rate;
+  nenguVal.textContent  = d.nengu_rate + '%';
+  nenguPrev.textContent = `預估本月金收入：${data.output.gold} 金`;
+  slider.oninput = () => {
+    nenguVal.textContent = slider.value + '%';
+    const baseGold = data.output.gold / ((d.nengu_rate || 20) / 100);
+    nenguPrev.textContent = `預估本月金收入：約 ${Math.round(baseGold * (slider.value / 100))} 金`;
+  };
+  slider.onchange = () => {
+    apiFetch(`/api/castle/${castleId}/nengu`, 'POST', { rate: parseInt(slider.value) })
+      .then(r => { if (r.ok) showToast(r.msg); else showToast(r.msg); })
+      .catch(() => showToast('年貢調整失敗'));
+  };
+
+  // Upgrade card
+  const upCard = document.getElementById('dm-upgrade-card');
+  const upBtn  = document.getElementById('dm-upgrade-btn');
+  if (data.next_upgrade) {
+    const spec = data.next_upgrade;
+    document.getElementById('dm-upgrade-name').textContent =
+      `升級 → ${spec.name}（Lv${spec.level}）`;
+    document.getElementById('dm-upgrade-meta').textContent =
+      `費用：${spec.cost} 金　建設時間：${spec.turns} 月` +
+      (spec.gold_out ? `　完工後月收約 +${Math.round(spec.gold_out * d.nengu_rate / 100)} 金` : '');
+    upBtn.disabled = d.building || data.player_gold < spec.cost;
+    upBtn.textContent = d.building ? '設施建設中' : data.player_gold < spec.cost ? '金錢不足' : '發出建設命令';
+    upCard.style.display = '';
+    upBtn.onclick = () => doUpgrade(castleId);
+  } else {
+    upCard.style.display = 'none';
+  }
+
+  // Mobilize
+  const cityBtn   = document.getElementById('dm-city-btn');
+  const farmerBtn = document.getElementById('dm-farmer-btn');
+  const mobStatus = document.getElementById('dm-mobilize-status');
+  cityBtn.disabled   = false;
+  farmerBtn.disabled = false;
+  mobStatus.textContent = '';
+  cityBtn.onclick   = () => doMobilize(castleId, 'city');
+  farmerBtn.onclick = () => doMobilize(castleId, 'farmer');
 }
 
 function closeDistrictModal() {
   document.getElementById('district-modal').classList.remove('open');
-  _currentDistrictId = null;
+  _currentCastleId = null;
 }
 
+// 舊 API compat
+function openCastleModal(id) { openDistrictModal(id); }
+function closeCastleModal() { closeDistrictModal(); }
+
 // ── 設施升級（UC-011） ───────────────────────────────────
-async function doUpgrade(districtId) {
+async function doUpgrade(castleId) {
   const btn = document.getElementById('dm-upgrade-btn');
   btn.disabled = true; btn.textContent = '送出中…';
   try {
-    const data = await apiFetch(`/api/district/${districtId}/upgrade`, 'POST');
+    const data = await apiFetch(`/api/castle/${castleId}/upgrade`, 'POST');
     if (data.ok) {
       updateHUD(data.state);
       showToast(data.msg);
@@ -270,40 +263,40 @@ async function doUpgrade(districtId) {
 }
 
 // ── 徵兵（UC-020/021） ───────────────────────────────────
-async function doMobilize(districtId, type) {
+async function doMobilize(castleId, type) {
   const cityBtn   = document.getElementById('dm-city-btn');
   const farmerBtn = document.getElementById('dm-farmer-btn');
   const status    = document.getElementById('dm-mobilize-status');
-  cityBtn.disabled = farmerBtn.disabled = true;
+  if (cityBtn) cityBtn.disabled = true;
+  if (farmerBtn) farmerBtn.disabled = true;
   try {
-    const data = await apiFetch('/api/mobilize', 'POST', { district_id: districtId, type });
+    const data = await apiFetch('/api/mobilize', 'POST', { castle_id: castleId, type });
     if (data.ok) {
       updateHUD(data.state);
       showToast(data.msg);
-      status.textContent = data.msg;
-      status.style.color = '#27ae60';
+      if (status) { status.textContent = data.msg; status.style.color = '#27ae60'; }
     } else {
       showToast(data.msg);
-      status.textContent = data.msg;
-      status.style.color = '#e74c3c';
+      if (status) { status.textContent = data.msg; status.style.color = '#e74c3c'; }
     }
   } catch(e) { showToast('徵兵失敗：' + e.message); }
-  finally { cityBtn.disabled = farmerBtn.disabled = false; }
+  finally {
+    if (cityBtn) cityBtn.disabled = false;
+    if (farmerBtn) farmerBtn.disabled = false;
+  }
 }
 
 // ── 軍事行動（UC-022 野戰 / UC-023 圍城） ──────────────────
-async function doAction(districtId, attackerRetainerId) {
+async function doAction(castleId, attackerRetainerId) {
   if (!attackerRetainerId) { showToast('請先選擇出兵武將'); return; }
   const btn = document.getElementById('dm-attack-btn');
   btn.disabled = true; btn.textContent = '出兵中…';
-
   try {
     const data = await apiFetch('/api/battle', 'POST', {
       attacker_id: attackerRetainerId,
-      target_district: districtId,
+      target_castle: castleId,
       mode: _attackMode,
     });
-
     updateHUD(data.state);
     updateLog(data.state.log);
 
@@ -357,42 +350,28 @@ function resetGame() {
   apiFetch('/api/reset', 'POST').then(() => { showToast('遊戲已重置'); setTimeout(() => location.reload(), 800); });
 }
 
-// ── 地圖：城節點點擊 ──────────────────────────────────────
-function bindCastleNodes() {
-  document.querySelectorAll('[data-castle]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      openCastleModal(el.dataset.castle);
-    });
-  });
-}
-
-// ── 地圖：郡點/標籤點擊 ───────────────────────────────────
-function bindDistrictDots() {
-  document.querySelectorAll('[data-district]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      openDistrictModal(el.dataset.district);
-    });
-  });
-}
-
 // ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   bindEndTurn();
-  bindCastleNodes();
-  bindDistrictDots();
 
-  // Close modals on overlay background click
-  ['district-modal', 'castle-modal'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  // Castle nodes on map / right panel → open territory modal
+  document.querySelectorAll('[data-castle]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openDistrictModal(el.dataset.castle);
+    });
   });
 
-  // ESC key closes all modals
+  // Close modal on overlay background click
+  const distModal = document.getElementById('district-modal');
+  if (distModal) distModal.addEventListener('click', e => {
+    if (e.target === distModal) distModal.classList.remove('open');
+  });
+
+  // ESC closes modals
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      ['district-modal', 'castle-modal', 'turn-overlay'].forEach(id => {
+      ['district-modal', 'turn-overlay'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.remove('open');
       });

@@ -2,29 +2,91 @@
 {% block body %}
 <div class="main">
 
-  <!-- LEFT SIDEBAR -->
-  <aside class="sidebar">
+  <!-- LEFT: ADVISOR PANEL（家老對話・主導航） -->
+  <aside class="advisor-sidebar">
+    <!-- Faction Status (compact) -->
     {% for fid, f in state.factions.items() %}
-    <div class="faction-card {{ fid }}">
-      <div class="fc-name">{{ f.name }}</div>
-      <div class="fc-stat"><span>金錢</span><span>{{ f.gold }} 金</span></div>
-      <div class="fc-stat"><span>軍糧</span><span>{{ f.military_supply }}</span></div>
-      <div class="fc-stat"><span>兵力</span>
-        <span>{{ oda_forces if fid=='oda' else imagawa_forces }}</span>
-      </div>
-      <div class="fc-stat"><span>城數</span>
-        <span>{{ state.castles | selectattr('faction','equalto',fid) | list | length }}</span>
-      </div>
-      <div class="force-bar-bg">
-        <div class="force-bar-fill" style="
-          width:{{ [(oda_forces if fid=='oda' else imagawa_forces) / ((oda_forces+imagawa_forces) or 1) * 100, 100] | min | int }}%;
-          background:{{ '#e74c3c' if fid=='oda' else '#2980b9' }}"></div>
-      </div>
+    <div class="faction-chip {{ fid }}">
+      <span class="fc-chip-name">{{ f.name }}</span>
+      <span class="fc-chip-stat">💰{{ f.gold }}  🌾{{ f.military_supply }}</span>
+      <span class="fc-chip-forces">⚔ {{ oda_forces if fid=='oda' else imagawa_forces }} 人</span>
     </div>
     {% endfor %}
 
-    <div style="padding:1rem;margin-top:auto">
-      <button class="end-turn-btn js-end-turn">⏭ 結束回合</button>
+    <!-- Advisor dialogue -->
+    <div class="advisor-card">
+      <div class="advisor-portrait">
+        {% if advisor %}
+        <div class="advisor-avatar">{{ advisor.name[:1] }}</div>
+        <div class="advisor-meta">
+          <div class="advisor-name">{{ advisor.name }}</div>
+          <div class="advisor-rank">{{ advisor.rank }}・{{ advisor.lineage }}</div>
+        </div>
+        {% else %}
+        <div class="advisor-avatar">勝</div>
+        <div class="advisor-meta">
+          <div class="advisor-name">柴田勝家</div>
+          <div class="advisor-rank">宿老・譜代</div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="advisor-bubble">
+        <div class="advisor-bubble-text" id="advisor-text">主公，本月欲作何事？</div>
+      </div>
+    </div>
+
+    <!-- Navigation choices -->
+    <div class="advisor-nav">
+      <a href="{{ url_for('politics') }}" class="advisor-nav-btn"
+         onmouseenter="setAdvisorText('領地治理或評定會議，政務一切在此。')">
+        <span class="anb-icon">📜</span>
+        <div class="anb-text">
+          <div class="anb-title">政務</div>
+          <div class="anb-hint">領地・評定</div>
+        </div>
+        <span class="anb-arrow">▶</span>
+      </a>
+      <a href="{{ url_for('military') }}" class="advisor-nav-btn"
+         onmouseenter="setAdvisorText('徵兵與出兵之事，臣在軍事室恭候。')">
+        <span class="anb-icon">⚔</span>
+        <div class="anb-text">
+          <div class="anb-title">軍事</div>
+          <div class="anb-hint">徵兵・出兵</div>
+        </div>
+        <span class="anb-arrow">▶</span>
+      </a>
+      <a href="{{ url_for('retainers') }}" class="advisor-nav-btn"
+         onmouseenter="setAdvisorText('家臣之事，包含家臣團的組建與管理。')">
+        <span class="anb-icon">👤</span>
+        <div class="anb-text">
+          <div class="anb-title">家臣</div>
+          <div class="anb-hint">家臣・家臣團</div>
+        </div>
+        <span class="anb-arrow">▶</span>
+      </a>
+      <a href="{{ url_for('intel') }}" class="advisor-nav-btn"
+         onmouseenter="setAdvisorText('情報活動尚在整備中，請稍候。')">
+        <span class="anb-icon">🥷</span>
+        <div class="anb-text">
+          <div class="anb-title">情報</div>
+          <div class="anb-hint">間諜・偵察</div>
+        </div>
+        <span class="anb-arrow">▶</span>
+      </a>
+      <a href="{{ url_for('council') }}" class="advisor-nav-btn"
+         onmouseenter="setAdvisorText('本月評定議題已備好，請主公入席。')">
+        <span class="anb-icon">🏛</span>
+        <div class="anb-text">
+          <div class="anb-title">評定</div>
+          <div class="anb-hint">評議・裁決</div>
+        </div>
+        <span class="anb-arrow">▶</span>
+      </a>
+    </div>
+
+    <!-- Actions -->
+    <div class="advisor-actions">
+      <button class="end-turn-btn js-end-turn">⏭ 結束本月</button>
       <div class="save-load-row">
         <button class="btn-sm" onclick="saveGame()">💾 存檔</button>
         <button class="btn-sm" onclick="loadGame()">📂 讀檔</button>
@@ -37,71 +99,66 @@
   <div class="map-container">
     <div class="map-svg-bg"></div>
 
-    <!-- Connection lines -->
+    <!-- Connection lines (鄰接城連線) -->
     <svg class="map-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
-      <line x1="28" y1="44" x2="62" y2="50" stroke="#3a2e1e" stroke-width="0.4"/>
-      <line x1="28" y1="44" x2="22" y2="30" stroke="#3a2e1e" stroke-width="0.4"/>
-      <line x1="62" y1="50" x2="75" y2="36" stroke="#3a2e1e" stroke-width="0.4"/>
+      <!-- 尾張內部 -->
+      <line x1="32" y1="46" x2="24" y2="28" stroke="#3a2e1e" stroke-width="0.5"/>
+      <line x1="32" y1="46" x2="14" y2="60" stroke="#3a2e1e" stroke-width="0.5"/>
+      <line x1="32" y1="46" x2="38" y2="64" stroke="#3a2e1e" stroke-width="0.5"/>
+      <line x1="24" y1="28" x2="16" y2="14" stroke="#3a2e1e" stroke-width="0.5"/>
+      <line x1="14" y1="60" x2="38" y2="64" stroke="#3a2e1e" stroke-width="0.5"/>
+      <!-- 尾張→三河 -->
+      <line x1="38" y1="64" x2="50" y2="70" stroke="#3a2e1e" stroke-width="0.5" stroke-dasharray="1,1"/>
+      <!-- 三河內部 -->
+      <line x1="68" y1="50" x2="80" y2="36" stroke="#2980b9" stroke-width="0.5" opacity="0.6"/>
+      <line x1="50" y1="70" x2="68" y2="50" stroke="#2980b9" stroke-width="0.5" opacity="0.6"/>
     </svg>
 
     <div class="map-canvas">
-      <!-- Castle nodes — click to see castle detail + districts -->
       {% for castle in state.castles %}
       <div class="castle-node {{ castle.faction }}"
            style="left:{{ castle.x }}%; top:{{ castle.y }}%"
            data-castle="{{ castle.id }}"
-           title="點擊查看 {{ castle.name }} 詳情">
+           title="點擊管理 {{ castle.name }}（{{ castle.type }}）">
         {% if castle.is_capital %}<span class="capital-star">★</span>{% endif %}
+        {% if castle.is_daimyo_home %}<span class="daimyo-home-badge" title="大名本城">👑</span>{% endif %}
         <div class="castle-icon">
           <span class="castle-level-badge">{{ castle.level }}</span>🏯
         </div>
         <div class="castle-label">{{ castle.name }}</div>
+        <div class="castle-type-tag">{{ castle.type }}</div>
         <div class="castle-garrison">{{ castle.garrison }} 人</div>
         <div class="castle-click-hint">▶ 點擊管理</div>
       </div>
       {% endfor %}
-
-      <!-- District dots + labels — click to open district detail -->
-      {% set dist_pos = {
-        'dist_01': [36, 52], 'dist_02': [31, 37],
-        'dist_03': [15, 24], 'dist_04': [20, 37],
-        'dist_05': [55, 43], 'dist_06': [58, 58],
-        'dist_07': [71, 50], 'dist_08': [80, 41]
-      } %}
-      {% for d in state.districts %}
-      {% set castle = state.castles | selectattr('id','equalto',d.castle) | first %}
-      {% set pos = dist_pos.get(d.id, [50, 50]) %}
-      <div class="district-dot {{ castle.faction }}"
-           style="left:{{ pos[0] }}%; top:{{ pos[1] }}%"
-           data-district="{{ d.id }}"
-           title="{{ d.name }}　{{ d.type }}　Lv{{ d.facility_level }}　年貢{{ d.nengu_rate }}%"></div>
-      <div class="district-dot-label"
-           style="left:{{ pos[0] }}%; top:{{ pos[1] + 4 }}%"
-           data-district="{{ d.id }}">{{ d.name }}</div>
-      {% endfor %}
     </div>
+
+    <!-- Province labels -->
+    <div class="province-label owari">尾張國</div>
+    <div class="province-label mikawa">三河國</div>
   </div>
 
   <!-- RIGHT PANEL -->
   <aside class="right-panel">
     <div class="rp-section">
-      <div class="rp-title">我方領地</div>
+      <div class="rp-title">我方城砦</div>
       {% for castle in state.castles %}
       {% if castle.faction == state.player_faction %}
-      <div class="rp-castle-header">🏯 {{ castle.name }}</div>
-      {% for d in state.districts %}
-      {% if d.castle == castle.id %}
-      <div class="rp-district-row" data-district="{{ d.id }}">
+      <div class="rp-castle-row" data-castle="{{ castle.id }}">
         <div>
-          <div class="rp-district-name">{{ d.name }}</div>
-          <div class="rp-district-meta">{{ d.type }}　{{ d.nengu_rate }}%
-            {% if d.building %}<span style="color:#3498db">（建設中）</span>{% endif %}
+          <div class="rp-castle-name">
+            {% if castle.is_daimyo_home %}👑{% endif %}
+            {{ castle.name }}
+          </div>
+          <div class="rp-castle-meta">
+            {{ castle.type }}　年貢{{ castle.nengu_rate }}%　
+            {{ castle.garrison }}/{{ castle.max_garrison }}兵
+            {% if castle.building %}<span style="color:#3498db">（建設中）</span>{% endif %}
+            {% if castle.corps_id %}<span style="color:#9b59b6">（家臣團轄）</span>{% endif %}
           </div>
         </div>
         <span class="rp-district-btn">管理</span>
       </div>
-      {% endif %}
-      {% endfor %}
       {% endif %}
       {% endfor %}
     </div>
@@ -118,4 +175,25 @@
     </div>
   </aside>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setAdvisorText(msg) {
+  const el = document.getElementById('advisor-text');
+  if (el) el.textContent = msg;
+}
+// Castle node click → territory modal
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-castle]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openDistrictModal(el.dataset.castle);
+    });
+  });
+  document.querySelectorAll('.rp-castle-row').forEach(el => {
+    el.addEventListener('click', () => openDistrictModal(el.dataset.castle));
+  });
+});
+</script>
 {% endblock %}
