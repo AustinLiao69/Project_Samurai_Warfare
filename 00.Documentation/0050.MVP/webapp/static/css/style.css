@@ -43,6 +43,15 @@ body {
 .res-label { color: var(--text-dim); }
 .res-value { color: var(--gold-light); font-weight: 700; }
 
+/* 頂欄：我方實力總覽（只顯示織田家） */
+.topbar-oda-summary {
+  display: flex; gap: 0.8rem; margin-left: auto; align-items: center; flex-wrap: wrap;
+}
+.tos-item { display: flex; align-items: center; gap: 0.25rem; font-size: 0.82rem; }
+.tos-label { color: var(--text-dim); }
+.tos-val  { color: var(--gold-light); font-weight: 700; }
+.tos-sep  { color: var(--border); font-size: 0.8rem; }
+
 /* ── NAV ─────────────────────────────────────────── */
 .nav { background: #0a0a0a; border-bottom: 1px solid var(--border); display: flex; }
 .nav a {
@@ -640,6 +649,13 @@ body {
 .anb-title { font-size: 0.85rem; font-weight: 700; color: var(--text-main); transition: color 0.15s; }
 .anb-hint  { font-size: 0.68rem; color: var(--text-dim); }
 .anb-arrow { font-size: 0.65rem; color: var(--text-dim); }
+
+/* 系統設定分隔線 */
+.advisor-nav-sep {
+  font-size: 0.62rem; color: var(--text-dim); letter-spacing: 0.12em;
+  padding: 0.35rem 0.8rem; background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border); text-transform: uppercase;
+}
 
 /* Advisor action buttons */
 .advisor-actions {

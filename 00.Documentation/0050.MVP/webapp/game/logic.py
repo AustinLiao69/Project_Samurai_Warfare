@@ -1,80 +1,106 @@
 """
 遊戲邏輯層 — 回合結算、資源計算、戰鬥、徵兵、圍城
-[重構] 一城一郡：所有 district 相關邏輯改為操作 castle 物件
+[架構] 城（軍事）/ 郡（行政）分離：
+  - 資源計算、設施升級、年貢調整 → 操作 district
+  - 守備兵力、戰鬥、鄰接判斷  → 操作 castle
+  - 每回合 log 重置（只保留本回合訊息）
 """
 import copy
 import random
 from data.initial import FACILITY_UPGRADE, loyalty_label
 
+
 # ────────────────────────────────────────────────────
-# 1. 資源計算（城即郡，使用城的 type/facility/nengu 屬性）
+# 0. 郡查詢 helper
 # ────────────────────────────────────────────────────
 
-def calc_castle_output(c):
-    """依城類型、設施等級、年貢率計算當月產出（城 = 郡）"""
-    dtype = c["type"]
-    lv    = c["facility_level"]
-    nengu = c["nengu_rate"] / 100.0
+def get_district_by_castle(state, castle_id):
+    """回傳與指定城 1:1 對應的郡物件"""
+    return next((d for d in state.get("districts", []) if d["castle_id"] == castle_id), None)
 
-    spec = FACILITY_UPGRADE.get(dtype, [])
-    row  = next((r for r in spec if r["level"] == lv), spec[0] if spec else None)
+def get_castle_by_id(state, castle_id):
+    return next((c for c in state["castles"] if c["id"] == castle_id), None)
+
+
+# ────────────────────────────────────────────────────
+# 1. 資源計算（操作郡物件）
+# ────────────────────────────────────────────────────
+
+def calc_district_output(d):
+    """依郡類型、設施等級、年貢率計算當月產出"""
+    dtype = d["type"]
+    lv    = d["facility_level"]
+    nengu = d["nengu_rate"] / 100.0
+    spec  = FACILITY_UPGRADE.get(dtype, [])
+    row   = next((r for r in spec if r["level"] == lv), spec[0] if spec else None)
     if not row:
         return {"gold": 0, "supply": 0}
-
     gold   = int(row.get("gold_out", 0) * nengu)
     supply = int(row.get("supply_out", 0) * nengu)
     return {"gold": gold, "supply": supply}
 
-# 舊名相容
-calc_district_output = calc_castle_output
+# 向後相容別名（部分呼叫仍用舊名）
+def calc_castle_output(c_or_d):
+    """接受城或郡物件，若為城則用 type/facility_level/nengu_rate 欄位（向後相容）"""
+    return calc_district_output(c_or_d)
 
 
 def calc_garrison_cost(state, faction_id):
     """城兵每 100 人消耗 5 金"""
-    total = 0
-    for c in state["castles"]:
-        if c["faction"] == faction_id:
-            total += (c["garrison"] // 100) * 5
-    return total
+    return sum((c["garrison"] // 100) * 5
+               for c in state["castles"] if c["faction"] == faction_id)
 
 
 # ────────────────────────────────────────────────────
-# 2. 回合結算
+# 2. 回合結算（log 每回合重置）
 # ────────────────────────────────────────────────────
 
 def process_turn(state):
-    log = []
+    log = []            # 本回合事件（重置）
     pf  = state["player_faction"]
 
-    # Step 1 — 設施建設進度
-    for c in state["castles"]:
-        if c.get("building") and c.get("building_turns", 0) > 0:
-            c["building_turns"] -= 1
-            if c["building_turns"] == 0:
-                c["building"] = False
-                c["facility_level"] += 1
+    # Step 1 — 郡設施建設進度
+    for d in state.get("districts", []):
+        if d.get("building") and d.get("building_turns", 0) > 0:
+            d["building_turns"] -= 1
+            if d["building_turns"] == 0:
+                d["building"] = False
+                d["facility_level"] += 1
                 new_name = next(
-                    (r["name"] for r in FACILITY_UPGRADE.get(c["type"], []) if r["level"] == c["facility_level"]),
-                    c["facility_name"]
+                    (r["name"] for r in FACILITY_UPGRADE.get(d["type"], [])
+                     if r["level"] == d["facility_level"]),
+                    d["facility_name"]
                 )
-                c["facility_name"] = new_name
-                log.append(f"【建設完工】{c['name']} 的 {c['facility_name']} 升至 Lv{c['facility_level']}")
+                d["facility_name"] = new_name
+                # 同步城等級（軍事郡升級 → 城等級提升）
+                if d["type"] == "軍事郡":
+                    c = get_castle_by_id(state, d["castle_id"])
+                    if c:
+                        c["level"] = d["facility_level"]
+                castle_name = next(
+                    (c["name"] for c in state["castles"] if c["id"] == d["castle_id"]), d["name"]
+                )
+                log.append(f"【建設完工】{castle_name}（{d['name']}）的 {d['facility_name']} 升至 Lv{d['facility_level']}")
 
-    # Step 2 — 農兵徵集完成
-    for c in state["castles"]:
-        if c["faction"] == pf and c.get("farmer_pending", 0) > 0:
-            c["farmer_pending"] -= 1
-            if c["farmer_pending"] == 0 and c.get("farmer_incoming", 0) > 0:
-                c["garrison"] = min(c["garrison"] + c["farmer_incoming"], c.get("max_garrison", 9999))
-                log.append(f"【徵兵完成】{c['name']} 農兵 {c['farmer_incoming']} 人完成訓練。")
-                c["farmer_incoming"] = 0
+    # Step 2 — 農兵徵集完成（郡 farmer 欄位）
+    for d in state.get("districts", []):
+        c = get_castle_by_id(state, d["castle_id"])
+        if not c or c["faction"] != pf:
+            continue
+        if d.get("farmer_pending", 0) > 0:
+            d["farmer_pending"] -= 1
+            if d["farmer_pending"] == 0 and d.get("farmer_incoming", 0) > 0:
+                c["garrison"] = min(c["garrison"] + d["farmer_incoming"],
+                                    c.get("max_garrison", 9999))
+                log.append(f"【徵兵完成】{c['name']} 農兵 {d['farmer_incoming']} 人完成訓練。")
+                d["farmer_incoming"] = 0
 
-    # Step 3 — 資源產出（玩家勢力）
-    gold_income   = 0
-    supply_income = 0
-    for c in state["castles"]:
-        if c["faction"] == pf:
-            out = calc_castle_output(c)
+    # Step 3 — 資源產出（我方郡產出）
+    gold_income = supply_income = 0
+    for d in state.get("districts", []):
+        c = get_castle_by_id(state, d["castle_id"])
+        if c and c["faction"] == pf:
+            out = calc_district_output(d)
             gold_income   += out["gold"]
             supply_income += out["supply"]
 
@@ -86,11 +112,12 @@ def process_turn(state):
     state["factions"][pf]["military_supply"] += supply_income
     log.append(f"【資源結算】金 +{gold_income}（維持 -{gold_cost}）= {net_gold:+d}　軍糧 +{supply_income}")
 
-    # Step 5 — 忠誠度影響（年貢 > 30%）
-    for c in state["castles"]:
-        if c["faction"] == pf and c["nengu_rate"] > 30 and c.get("retainer"):
-            delta = -round((c["nengu_rate"] - 30) * 0.5)
-            r = next((x for x in state["retainers"] if x["id"] == c["retainer"]), None)
+    # Step 5 — 忠誠度影響（郡年貢 > 30%）
+    for d in state.get("districts", []):
+        c = get_castle_by_id(state, d["castle_id"])
+        if c and c["faction"] == pf and d["nengu_rate"] > 30 and d.get("retainer"):
+            delta = -round((d["nengu_rate"] - 30) * 0.5)
+            r = next((x for x in state["retainers"] if x["id"] == d["retainer"]), None)
             if r and r["rank"] != "大名":
                 r["loyalty"] = max(0, min(100, r["loyalty"] + delta))
                 r["loyalty_label"] = loyalty_label(r["loyalty"])
@@ -108,26 +135,27 @@ def process_turn(state):
         state["date"]["year"] += 1
     state["turn"] += 1
 
-    state["log"] = log + state.get("log", [])
-    state["log"] = state["log"][:20]
+    # 【重要】本回合 log 重置（只保留本回合事件）
+    state["log"] = log
     return state, log
 
 
 # ────────────────────────────────────────────────────
-# 3. 設施升級（城即郡）
+# 3. 設施升級（操作郡）
 # ────────────────────────────────────────────────────
 
 def upgrade_facility(state, castle_id):
-    c = next((x for x in state["castles"] if x["id"] == castle_id), None)
-    if not c:
-        return None, "找不到城"
-    if c.get("building"):
-        return None, "該城設施正在建設中"
-    if c["facility_level"] >= c["facility_max"]:
+    d = get_district_by_castle(state, castle_id)
+    c = get_castle_by_id(state, castle_id)
+    if not d or not c:
+        return None, "找不到城或郡"
+    if d.get("building"):
+        return None, "該郡設施正在建設中"
+    if d["facility_level"] >= d["facility_max"]:
         return None, "已達最高等級"
 
-    dtype  = c["type"]
-    nxt_lv = c["facility_level"] + 1
+    dtype  = d["type"]
+    nxt_lv = d["facility_level"] + 1
     spec   = next((r for r in FACILITY_UPGRADE.get(dtype, []) if r["level"] == nxt_lv), None)
     if not spec:
         return None, "無升級規格"
@@ -139,36 +167,39 @@ def upgrade_facility(state, castle_id):
 
     state["factions"][pf]["gold"] -= cost
     if spec["turns"] == 0:
-        c["facility_level"] = nxt_lv
-        c["facility_name"]  = spec["name"]
-        msg = f"【升級完成】{c['name']} → {spec['name']}（即時）"
+        d["facility_level"] = nxt_lv
+        d["facility_name"]  = spec["name"]
+        if dtype == "軍事郡":
+            c["level"] = nxt_lv
+        msg = f"【升級完成】{c['name']}（{d['name']}）→ {spec['name']}（即時）"
     else:
-        c["building"]       = True
-        c["building_turns"] = spec["turns"]
-        msg = f"【開始建設】{c['name']} 升級中（{spec['turns']} 月後完工，費用 {cost} 金）"
+        d["building"]       = True
+        d["building_turns"] = spec["turns"]
+        msg = f"【開始建設】{c['name']}（{d['name']}）升級中（{spec['turns']} 月後完工，費用 {cost} 金）"
 
     state["log"].insert(0, msg)
     return state, msg
 
 
 # ────────────────────────────────────────────────────
-# 4. 年貢調整
+# 4. 年貢調整（操作郡）
 # ────────────────────────────────────────────────────
 
 def set_nengu(state, castle_id, rate):
     rate = max(10, min(60, int(rate)))
-    c = next((x for x in state["castles"] if x["id"] == castle_id), None)
-    if not c:
-        return None, "找不到城"
-    old = c["nengu_rate"]
-    c["nengu_rate"] = rate
-    msg = f"【年貢調整】{c['name']} {old}% → {rate}%"
+    d = get_district_by_castle(state, castle_id)
+    c = get_castle_by_id(state, castle_id)
+    if not d or not c:
+        return None, "找不到城或郡"
+    old = d["nengu_rate"]
+    d["nengu_rate"] = rate
+    msg = f"【年貢調整】{c['name']}（{d['name']}）{old}% → {rate}%"
     state["log"].insert(0, msg)
     return state, msg
 
 
 # ────────────────────────────────────────────────────
-# 5. 徵兵
+# 5. 徵兵（城守備 + 郡 farmer）
 # ────────────────────────────────────────────────────
 
 CASTLE_GARRISON_MAX = {1: 1000, 2: 2000, 3: 4000, 4: 8000, 5: 15000}
@@ -176,9 +207,10 @@ CITY_MOBILIZE   = 300
 FARMER_MOBILIZE = 500
 
 def mobilize_troops(state, castle_id, mtype):
-    c = next((x for x in state["castles"] if x["id"] == castle_id), None)
-    if not c:
-        return None, "找不到城"
+    c = get_castle_by_id(state, castle_id)
+    d = get_district_by_castle(state, castle_id)
+    if not c or not d:
+        return None, "找不到城或郡"
 
     pf = state["player_faction"]
     if c["faction"] != pf:
@@ -205,14 +237,14 @@ def mobilize_troops(state, castle_id, mtype):
         amt  = FARMER_MOBILIZE
         if state["factions"][pf]["gold"] < cost:
             return None, f"農民兵徵集需 {cost} 金（現有 {state['factions'][pf]['gold']} 金）"
-        if c.get("farmer_pending", 0) > 0:
+        if d.get("farmer_pending", 0) > 0:
             return None, "已有農民兵正在訓練中"
         if c["garrison"] >= cap:
             return None, f"城兵已達上限（{cap} 人）"
         state["factions"][pf]["gold"] -= cost
-        c["farmer_pending"]  = 1
-        c["farmer_incoming"] = min(amt, cap - c["garrison"])
-        msg = f"【農民徵集】{c['name']} 農民兵 {c['farmer_incoming']} 人將於下月編入（費用 {cost} 金）"
+        d["farmer_pending"]  = 1
+        d["farmer_incoming"] = min(amt, cap - c["garrison"])
+        msg = f"【農民徵集】{c['name']} 農民兵 {d['farmer_incoming']} 人將於下月編入（費用 {cost} 金）"
         state["log"].insert(0, msg)
         return state, msg
 
@@ -297,17 +329,19 @@ def resolve_siege(attacker, defender):
 
 
 # ────────────────────────────────────────────────────
-# 8. 評定裁決忠誠度影響
+# 8. 評定裁決
+#    - 忠誠度影響
+#    - 特殊效果：獻城（ct_02 + comply）
 # ────────────────────────────────────────────────────
 
 def apply_council_decision(state, topic, choice_id):
     changes = []
     pf      = state["player_faction"]
 
+    # ── 忠誠度影響 ──
     for r in state["retainers"]:
         if r["faction"] != pf or r["rank"] == "大名":
             continue
-
         stance_data = topic["stances"].get(r["id"])
         if not stance_data:
             continue
@@ -338,5 +372,22 @@ def apply_council_decision(state, topic, choice_id):
             state["log"].insert(0,
                 f"【裁決影響】{r['name']} 忠誠度 {delta:+d}（{old_label} → {r['loyalty_label']}）")
 
-    state["log"] = state["log"][:20]
+    # ── 特殊效果：獻城 ──
+    cede_castle_id = topic.get("cede_castle")
+    if cede_castle_id and choice_id == "comply":
+        c = get_castle_by_id(state, cede_castle_id)
+        d = get_district_by_castle(state, cede_castle_id)
+        if c and c["faction"] == pf:
+            enemy_faction = next(
+                (fid for fid in state["factions"] if fid != pf), "imagawa"
+            )
+            c["faction"] = enemy_faction
+            if d:
+                d["corps_id"] = None
+            # 解除家臣駐守
+            for retainer in state["retainers"]:
+                if retainer.get("location") == cede_castle_id and retainer["faction"] == pf:
+                    retainer["location"] = "castle_01"
+            state["log"].insert(0, f"【獻城】{c['name']}（含{d['name'] if d else '其郡'}）已割讓予今川家！")
+
     return state, changes

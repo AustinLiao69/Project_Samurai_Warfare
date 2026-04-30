@@ -14,11 +14,19 @@
   <span class="topbar-date" id="hud-date">
     永祿{{ state.date.year - 1557 }}年（{{ state.date.year }}）{{ state.date.month }}月
   </span>
-  <div class="topbar-resources">
-    <span class="res-item"><span class="res-label">金：</span><span class="res-value" id="hud-gold">{{ state.factions[state.player_faction].gold }}</span></span>
-    <span class="res-item"><span class="res-label">軍糧：</span><span class="res-value" id="hud-supply">{{ state.factions[state.player_faction].military_supply }}</span></span>
-    <span class="res-item"><span class="res-label">勢力：</span>
-      <span class="res-value" style="color:{{ '#e74c3c' if state.player_faction=='oda' else '#2980b9' }}">{{ state.factions[state.player_faction].name }}</span>
+
+  <!-- 我方實力（只顯示織田家） -->
+  <div class="topbar-oda-summary">
+    <span class="tos-item"><span class="tos-label">💰</span><span class="tos-val" id="hud-gold">{{ state.factions[state.player_faction].gold }}</span></span>
+    <span class="tos-sep">|</span>
+    <span class="tos-item"><span class="tos-label">🌾</span><span class="tos-val" id="hud-supply">{{ state.factions[state.player_faction].military_supply }}</span></span>
+    <span class="tos-sep">|</span>
+    <span class="tos-item"><span class="tos-label">🏯</span><span class="tos-val" id="hud-castles">{{ oda.castle_count if oda else '—' }}</span></span>
+    <span class="tos-sep">|</span>
+    <span class="tos-item"><span class="tos-label">⚔</span><span class="tos-val" id="hud-forces">{{ oda.total_forces if oda else '—' }}</span></span>
+    <span class="tos-sep">|</span>
+    <span class="tos-item">
+      <span class="tos-val" style="color:{{ '#e74c3c' if state.player_faction=='oda' else '#2980b9' }}">{{ state.factions[state.player_faction].name }}</span>
     </span>
     {% if active != 'map' %}
     <a href="{{ url_for('index') }}" class="topbar-back-btn">← 返回地圖</a>
@@ -26,7 +34,7 @@
   </div>
 </header>
 
-<!-- Sub-page nav (hidden on map; map uses advisor dialogue) -->
+<!-- Sub-page nav (hidden on map) -->
 {% if active != 'map' %}
 <nav class="subnav">
   <a href="{{ url_for('index') }}"    class="{{ 'active' if active=='map' }}">🗺 地圖</a>
@@ -40,9 +48,7 @@
 
 {% block body %}{% endblock %}
 
-<!-- ══════════════════════════════════════════════════ -->
-<!-- TERRITORY MODAL（城 = 郡，統一管理視窗） -->
-<!-- ══════════════════════════════════════════════════ -->
+<!-- ══ TERRITORY MODAL ══ -->
 <div class="modal-overlay" id="district-modal">
   <div class="modal">
     <div class="modal-header">
@@ -51,27 +57,23 @@
     </div>
     <div style="font-size:0.75rem;color:var(--text-dim);margin-top:-0.6rem;margin-bottom:0.8rem" id="dm-type"></div>
 
-    <!-- Corps/Daimyo Notice -->
     <div class="corps-notice" id="dm-corps-notice" style="display:none">
       <span id="dm-corps-notice-text"></span>
     </div>
 
-    <!-- Info -->
     <div class="modal-section">
       <div class="modal-label">基本資訊</div>
       <div class="info-grid">
         <div class="info-cell"><div class="info-cell-label">城等級</div><div class="info-cell-val" id="dm-level">—</div></div>
         <div class="info-cell"><div class="info-cell-label">守備兵力</div><div class="info-cell-val" id="dm-garrison">—</div></div>
-        <div class="info-cell"><div class="info-cell-label">設施狀態</div><div class="info-cell-val" id="dm-facility">—</div></div>
+        <div class="info-cell"><div class="info-cell-label">郡設施</div><div class="info-cell-val" id="dm-facility">—</div></div>
         <div class="info-cell"><div class="info-cell-label">本月金收入</div><div class="info-cell-val" id="dm-gold-out">—</div></div>
         <div class="info-cell"><div class="info-cell-label">本月軍糧</div><div class="info-cell-val" id="dm-supply-out">—</div></div>
         <div class="info-cell" style="grid-column:1/-1"><div class="info-cell-label">管理家臣</div><div class="info-cell-val" id="dm-retainer">—</div></div>
       </div>
     </div>
 
-    <!-- PLAYER-ONLY: Nengu + Upgrade + Mobilize -->
     <div id="dm-player-section">
-      <!-- Nengu (UC-012) -->
       <div class="modal-section">
         <div class="modal-label">年貢率調整（10%–60%）</div>
         <div class="nengu-wrap">
@@ -81,9 +83,8 @@
         <div class="nengu-preview" id="dm-nengu-preview">預估本月金收入：—</div>
       </div>
 
-      <!-- Upgrade (UC-011) -->
       <div class="modal-section" id="dm-upgrade-card">
-        <div class="modal-label">設施升級</div>
+        <div class="modal-label">郡設施升級</div>
         <div class="upgrade-card">
           <div class="upgrade-info">
             <div class="upgrade-name" id="dm-upgrade-name">—</div>
@@ -93,9 +94,8 @@
         </div>
       </div>
 
-      <!-- Mobilize (UC-020/021) -->
       <div class="modal-section" id="dm-mobilize-section">
-        <div class="modal-label">徵兵</div>
+        <div class="modal-label">城防徵兵</div>
         <div class="mobilize-row">
           <button class="btn-mobilize" id="dm-city-btn">⚔ 城兵徵召（即時）</button>
           <button class="btn-mobilize" id="dm-farmer-btn">🌾 農民兵（1月後）</button>
@@ -104,7 +104,6 @@
       </div>
     </div>
 
-    <!-- ENEMY: Attack / Siege -->
     <div class="attack-section" id="dm-attack-section">
       <div class="modal-label" style="margin-bottom:0.5rem">軍事行動</div>
       <div class="attack-mode-tabs">
@@ -124,9 +123,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════ -->
-<!-- TURN RESULT OVERLAY                              -->
-<!-- ══════════════════════════════════════════════════ -->
+<!-- ══ TURN RESULT OVERLAY ══ -->
 <div class="turn-overlay" id="turn-overlay">
   <div class="turn-overlay-box">
     <div class="turn-overlay-title" id="turn-overlay-title">回合結算</div>
