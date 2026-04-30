@@ -41,3 +41,9 @@ MM       DD      Description        Progress
 4       30       SA+PG 撰寫 SRS_0009.戰後處置模組（PostWarSystem）— GDScript 介面/訊號/資料模型      Done
 4       30       SA+PG 撰寫 SRS_0010.派系思想模組（FactionSystem）— GDScript 介面/訊號/資料模型      Done
 4       30       SA+PG 撰寫 SRS_0011.武將評價模組（RetainerEvalSystem）— GDScript 介面/訊號/資料模型      Done
+4       30       建立 00.Documentation/0.對話/ 資料夾，建立第一封往來信件 20260430.任務交辦與回覆.md      Done
+4       30       PM005 合併至 0000 §2（v2.0）：技術選型/三層架構/場景樹/資料結構/Command Pattern/資料流/存檔/效能/命名規範     Done
+4       30       0000 §2.2 三層架構補全三個缺漏模組（PostWarModule / FactionModule / RetainerEvalModule）      Done
+4       30       PM005 標注「已合併至 0000 v2.0，保留存查」       Done
+4       30       建立 MVP Webapp（Python Flask）：4 頁面（地圖/家臣/政務/評議），mock data 對應 PM008      Done
+4       30       Webapp 啟動：python3 webapp/app.py（port 5000）      Done

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="main">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    {% for fid, fac in state.factions.items() %}
+    <div class="faction-card {{ fid }}">
+      <div class="fc-name">{{ fac.name }}</div>
+      <div class="fc-stat">
+        <span>金錢</span>
+        <span>{{ fac.gold }} 貫</span>
+      </div>
+      <div class="fc-stat">
+        <span>軍糧</span>
+        <span>{{ fac.military_supply }}</span>
+      </div>
+      <div class="fc-stat">
+        <span>總兵力</span>
+        {% if fid == "oda" %}
+        <span>{{ oda_forces }}</span>
+        {% else %}
+        <span>{{ imagawa_forces }}</span>
+        {% endif %}
+      </div>
+      <div class="force-bar-bg">
+        <div class="force-bar-fill"
+             style="width: {% if fid == 'oda' %}{{ (oda_forces / (oda_forces + imagawa_forces) * 100) | int }}{% else %}{{ (imagawa_forces / (oda_forces + imagawa_forces) * 100) | int }}{% endif %}%;
+                    background: {% if fid == 'oda' %}var(--red-oda-hi){% else %}var(--blue-ima-hi){% endif %};">
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div style="padding: 0.8rem; font-size: 0.72rem; color: var(--text-dim); line-height: 1.8;">
+      <div style="color: var(--text-gold); margin-bottom: 0.4rem;">城池狀況</div>
+      {% for c in state.castles %}
+      <div style="display:flex; justify-content:space-between; margin: 0.2rem 0;">
+        <span style="color: {% if c.faction == 'oda' %}var(--red-oda-hi){% else %}var(--blue-ima-hi){% endif %}">{{ c.name }}</span>
+        <span>Lv{{ c.level }} | {{ c.garrison }}兵</span>
+      </div>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <!-- MAP -->
+  <main class="map-container">
+    <div class="map-svg-bg"></div>
+
+    <!-- SVG connection lines -->
+    <svg class="map-connections" xmlns="http://www.w3.org/2000/svg">
+      <!-- Oda internal -->
+      <line x1="28%" y1="42%" x2="22%" y2="32%" stroke="#3a2e1e" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- Imagawa internal -->
+      <line x1="62%" y1="50%" x2="75%" y2="38%" stroke="#1a3a5e" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <!-- Border (contested) -->
+      <line x1="28%" y1="42%" x2="62%" y2="50%" stroke="#4a3020" stroke-width="1" stroke-dasharray="6,4" opacity="0.5"/>
+    </svg>
+
+    <div class="map-canvas">
+      {% for c in state.castles %}
+      <div class="castle-node {{ c.faction }}"
+           style="left: {{ c.x }}%; top: {{ c.y }}%;"
+           title="{{ c.name }} | Lv{{ c.level }} | 城兵 {{ c.garrison }}">
+
+        {% if c.is_capital %}
+        <span class="capital-star">★</span>
+        {% endif %}
+
+        <div class="castle-icon">
+          🏯
+          <span class="castle-level-badge">{{ c.level }}</span>
+        </div>
+
+        <div class="castle-label">
+          {{ c.name }}
+        </div>
+        <div class="castle-garrison">城兵 {{ c.garrison }}</div>
+      </div>
+      {% endfor %}
+
+      <!-- Province labels -->
+      <div style="position:absolute; left:18%; top:20%; font-size:0.72rem; color:rgba(192,57,43,0.5); letter-spacing:0.2em; writing-mode:vertical-rl;">尾張國</div>
+      <div style="position:absolute; left:55%; top:20%; font-size:0.72rem; color:rgba(26,82,118,0.5); letter-spacing:0.2em; writing-mode:vertical-rl;">三河國</div>
+
+      <!-- Year watermark -->
+      <div style="position:absolute; bottom:2rem; right:2rem; font-size:3rem; color:rgba(255,255,255,0.04); font-weight:900; letter-spacing:0.1em;">
+        永祿三年
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right-panel">
+    <div class="rp-section">
+      <div class="rp-title">本月情勢</div>
+      <div class="rp-item">
+        <span class="rp-item-name">回合</span>
+        <span class="rp-item-val">{{ state.date.year }}/{{ state.date.month }}</span>
+      </div>
+      <div class="rp-item">
+        <span class="rp-item-name">局勢</span>
+        <span class="rp-item-val" style="color: #e67e22;">緊張</span>
+      </div>
+      <div class="rp-item">
+        <span class="rp-item-name">威脅</span>
+        <span class="rp-item-val" style="color: #e74c3c;">今川大軍集結</span>
+      </div>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-title">郡縣一覽</div>
+      {% for d in state.districts %}
+      {% if d.castle in ['castle_01', 'castle_02'] %}
+      <div class="rp-item">
+        <span class="rp-item-name">{{ d.name }}</span>
+        <span class="rp-item-val" style="font-size: 0.7rem;">{{ d.type[0] }}Lv{{ d.facility_level }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-title">最近事件</div>
+      <div style="font-size: 0.78rem; color: var(--text-dim); line-height: 1.8;">
+        <div>• 今川家軍備擴張</div>
+        <div>• 那古野郡糧草充足</div>
+        <div>• 木下藤吉郎情報回報</div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+{% endblock %}

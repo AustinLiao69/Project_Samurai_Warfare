@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>戰國三代記 — MVP Prototype</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <span class="topbar-title">《戰國三代記》</span>
+  <span class="topbar-date">
+    永祿{{ state.date.year - 1557 }}年（{{ state.date.year }}）
+    {{ state.date.month }}月
+  </span>
+  <div class="topbar-resources">
+    <div class="res-item">
+      <span class="res-label">金：</span>
+      <span class="res-value">{{ state.factions[state.player_faction].gold }}</span>
+    </div>
+    <div class="res-item">
+      <span class="res-label">軍糧：</span>
+      <span class="res-value">{{ state.factions[state.player_faction].military_supply }}</span>
+    </div>
+    <div class="res-item">
+      <span class="res-label">勢力：</span>
+      <span class="res-value" style="color: #e74c3c;">{{ state.factions[state.player_faction].name }}</span>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="/" class="{{ 'active' if active == 'map' }}">🗾 天下地圖</a>
+  <a href="/retainers" class="{{ 'active' if active == 'retainers' }}">👤 家臣一覽</a>
+  <a href="/politics" class="{{ 'active' if active == 'politics' }}">📋 政務選單</a>
+  <a href="/council" class="{{ 'active' if active == 'council' }}">🏛️ 評定會議</a>
+</nav>
+
+{% block content %}{% endblock %}
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="status-bar">
+    <span class="status-phase">Phase：MVP (永祿三年・桶狹間前夕)</span>
+    <span>織田家 vs 今川家</span>
+    <span>⚙️ Webapp Prototype — 正式版將以 GDScript / Godot 4.x 開發</span>
+  </div>
+</footer>
+
+</body>
+</html>
