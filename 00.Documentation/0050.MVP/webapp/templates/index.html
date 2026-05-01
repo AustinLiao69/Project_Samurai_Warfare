@@ -2,10 +2,8 @@
 {% block body %}
 <div class="main">
 
-  <!-- LEFT: ADVISOR PANEL（家老對話・主導航） -->
+  <!-- LEFT: ADVISOR PANEL -->
   <aside class="advisor-sidebar">
-
-    <!-- Advisor dialogue -->
     <div class="advisor-card">
       <div class="advisor-portrait">
         {% if advisor %}
@@ -27,14 +25,13 @@
       </div>
     </div>
 
-    <!-- Navigation choices -->
     <div class="advisor-nav">
       <a href="{{ url_for('politics') }}" class="advisor-nav-btn"
-         onmouseenter="setAdvisorText('領地治理或評定會議，政務一切在此。')">
+         onmouseenter="setAdvisorText('領地治理・分封城郡，政務在此。')">
         <span class="anb-icon">📜</span>
         <div class="anb-text">
           <div class="anb-title">政務</div>
-          <div class="anb-hint">領地・評定</div>
+          <div class="anb-hint">領地・分封</div>
         </div>
         <span class="anb-arrow">▶</span>
       </a>
@@ -48,7 +45,7 @@
         <span class="anb-arrow">▶</span>
       </a>
       <a href="{{ url_for('retainers') }}" class="advisor-nav-btn"
-         onmouseenter="setAdvisorText('家臣之事，包含家臣團的組建與管理。')">
+         onmouseenter="setAdvisorText('家臣之事，包含家臣一覽與家臣團管理。')">
         <span class="anb-icon">👤</span>
         <div class="anb-text">
           <div class="anb-title">家臣</div>
@@ -74,7 +71,6 @@
         </div>
         <span class="anb-arrow">▶</span>
       </a>
-      <!-- 系統設定分隔線 -->
       <div class="advisor-nav-sep">系統設定</div>
       <a class="advisor-nav-btn" onclick="saveGame()"
          onmouseenter="setAdvisorText('將本局存入快速存檔。')">
@@ -102,55 +98,60 @@
       </a>
     </div>
 
-    <!-- End Turn -->
     <div class="advisor-actions">
       <button class="end-turn-btn js-end-turn">⏭ 結束本月</button>
     </div>
   </aside>
 
-  <!-- MAP -->
-  <div class="map-container">
+  <!-- MAP — 可拖拉平移 -->
+  <div class="map-container" id="map-container">
     <div class="map-svg-bg"></div>
 
-    <svg class="map-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
-      <!-- 尾張內部 -->
-      <line x1="32" y1="46" x2="24" y2="28" stroke="#3a2e1e" stroke-width="0.5"/>
-      <line x1="32" y1="46" x2="14" y2="60" stroke="#3a2e1e" stroke-width="0.5"/>
-      <line x1="32" y1="46" x2="38" y2="64" stroke="#3a2e1e" stroke-width="0.5"/>
-      <line x1="24" y1="28" x2="16" y2="14" stroke="#3a2e1e" stroke-width="0.5"/>
-      <line x1="14" y1="60" x2="38" y2="64" stroke="#3a2e1e" stroke-width="0.5"/>
-      <!-- 尾張→三河 -->
-      <line x1="38" y1="64" x2="50" y2="70" stroke="#3a2e1e" stroke-width="0.5" stroke-dasharray="1,1"/>
-      <!-- 三河內部 -->
-      <line x1="68" y1="50" x2="80" y2="36" stroke="#2980b9" stroke-width="0.5" opacity="0.6"/>
-      <line x1="50" y1="70" x2="68" y2="50" stroke="#2980b9" stroke-width="0.5" opacity="0.6"/>
-    </svg>
+    <!-- map-inner 整體平移層 -->
+    <div class="map-inner" id="map-inner">
+      <svg class="map-connections" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <!-- 尾張內部 -->
+        <line x1="32" y1="46" x2="24" y2="28" stroke="#3a2e1e" stroke-width="0.5"/>
+        <line x1="32" y1="46" x2="14" y2="60" stroke="#3a2e1e" stroke-width="0.5"/>
+        <line x1="32" y1="46" x2="38" y2="64" stroke="#3a2e1e" stroke-width="0.5"/>
+        <line x1="24" y1="28" x2="16" y2="14" stroke="#3a2e1e" stroke-width="0.5"/>
+        <line x1="14" y1="60" x2="38" y2="64" stroke="#3a2e1e" stroke-width="0.5"/>
+        <!-- 尾張→三河 -->
+        <line x1="38" y1="64" x2="50" y2="70" stroke="#3a2e1e" stroke-width="0.5" stroke-dasharray="1,1"/>
+        <!-- 三河內部 -->
+        <line x1="68" y1="50" x2="80" y2="36" stroke="#2980b9" stroke-width="0.5" opacity="0.6"/>
+        <line x1="50" y1="70" x2="68" y2="50" stroke="#2980b9" stroke-width="0.5" opacity="0.6"/>
+      </svg>
 
-    <div class="map-canvas">
-      {% for castle in state.castles %}
-      {% set d = district_map[castle.id] if district_map is defined and castle.id in district_map else None %}
-      <div class="castle-node {{ castle.faction }}"
-           style="left:{{ castle.x }}%; top:{{ castle.y }}%"
-           data-castle="{{ castle.id }}"
-           title="點擊管理 {{ castle.name }}（{{ d.type if d else '城' }}）">
-        {% if castle.is_capital %}<span class="capital-star">★</span>{% endif %}
-        {% if castle.is_daimyo_home %}<span class="daimyo-home-badge" title="大名本城">👑</span>{% endif %}
-        <div class="castle-icon">
-          <span class="castle-level-badge">{{ castle.level }}</span>🏯
+      <div class="map-canvas">
+        {% for castle in state.castles %}
+        {% set chatelain_r = namespace(name='') %}
+        {% for r in state.retainers %}{% if r.id == castle.chatelain %}{% set chatelain_r.name = r.name %}{% endif %}{% endfor %}
+        <div class="castle-node {{ castle.faction }}"
+             style="left:{{ castle.x }}%; top:{{ castle.y }}%"
+             data-castle="{{ castle.id }}"
+             title="{{ castle.name }}（城主：{{ chatelain_r.name if chatelain_r.name else '未設' }}）">
+          {% if castle.is_capital %}<span class="capital-star">★</span>{% endif %}
+          {% if castle.is_daimyo_home %}<span class="daimyo-home-badge" title="大名本城">👑</span>{% endif %}
+          <div class="castle-icon">
+            <span class="castle-level-badge">{{ castle.level }}</span>🏯
+          </div>
+          <div class="castle-label">{{ castle.name }}</div>
+          {% if chatelain_r.name %}
+          <div class="castle-chatelain">城主：{{ chatelain_r.name }}</div>
+          {% endif %}
+          <div class="castle-garrison">{{ castle.garrison }} 人</div>
+          <div class="castle-click-hint">▶ 點擊管理</div>
         </div>
-        <div class="castle-label">{{ castle.name }}</div>
-        {% if d %}<div class="castle-type-tag">{{ d.type }}</div>{% endif %}
-        <div class="castle-garrison">{{ castle.garrison }} 人</div>
-        <div class="castle-click-hint">▶ 點擊管理</div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
+    </div><!-- end map-inner -->
 
     <div class="province-label owari">尾張國</div>
     <div class="province-label mikawa">三河國</div>
   </div>
 
-  <!-- RIGHT PANEL：僅保留最新消息 -->
+  <!-- RIGHT PANEL：最新消息 -->
   <aside class="right-panel" style="width:200px;min-width:200px">
     <div class="rp-section">
       <div class="rp-title">最新消息</div>

@@ -127,7 +127,8 @@ function openDistrictModal(castleId) {
         : `${d.facility_name} Lv${d.facility_level}`;
       document.getElementById('dm-gold-out').textContent   = `${data.output.gold} 金/月`;
       document.getElementById('dm-supply-out').textContent = `${data.output.supply} 糧/月`;
-      document.getElementById('dm-retainer').textContent   = data.retainer ? data.retainer.name : '（未分封）';
+      document.getElementById('dm-chatelain').textContent  = data.chatelain ? data.chatelain.name : '（未設置）';
+      document.getElementById('dm-daikan').textContent     = data.daikan    ? data.daikan.name    : '（未設置）';
 
       // --- Corps / Daimyo notice ---
       const noticeEl     = document.getElementById('dm-corps-notice');
@@ -143,7 +144,7 @@ function openDistrictModal(castleId) {
           noticeEl.style.display = '';
           noticeTextEl.innerHTML =
             `🏴 此城由家臣團「${data.corps_info.corps_name}」（首領：${data.corps_info.leader_name}）統轄。<br>` +
-            `直接管理（年貢/升級/徵兵）已委任首領代理，玩家不可直接操作。`;
+            `年貢・郡政升級・城防徵兵・出兵均已委任首領代理，玩家不可直接操作。`;
           playerSec.style.display = 'none';
         } else if (data.is_daimyo_home) {
           noticeEl.style.display = '';
@@ -350,9 +351,64 @@ function resetGame() {
   apiFetch('/api/reset', 'POST').then(() => { showToast('遊戲已重置'); setTimeout(() => location.reload(), 800); });
 }
 
+// ── 地圖拖移 Pan（map-inner 整體平移）──────────────────────
+function initMapDrag() {
+  const container = document.getElementById('map-container');
+  const inner     = document.getElementById('map-inner');
+  if (!container || !inner) return;
+
+  let isDragging = false;
+  let startX = 0, startY = 0;
+  let panX = 0, panY = 0;
+
+  container.style.cursor = 'grab';
+
+  container.addEventListener('mousedown', e => {
+    if (e.target.closest('[data-castle]')) return;
+    isDragging = true;
+    startX = e.clientX - panX;
+    startY = e.clientY - panY;
+    container.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    panX = e.clientX - startX;
+    panY = e.clientY - startY;
+    inner.style.transform = `translate(${panX}px, ${panY}px)`;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    container.style.cursor = 'grab';
+  });
+
+  // 觸控支援
+  container.addEventListener('touchstart', e => {
+    if (e.target.closest('[data-castle]')) return;
+    const t = e.touches[0];
+    isDragging = true;
+    startX = t.clientX - panX;
+    startY = t.clientY - panY;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const t = e.touches[0];
+    panX = t.clientX - startX;
+    panY = t.clientY - startY;
+    inner.style.transform = `translate(${panX}px, ${panY}px)`;
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => { isDragging = false; });
+}
+
 // ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   bindEndTurn();
+  initMapDrag();
 
   // Castle nodes on map / right panel → open territory modal
   document.querySelectorAll('[data-castle]').forEach(el => {

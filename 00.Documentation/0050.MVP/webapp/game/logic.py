@@ -112,12 +112,12 @@ def process_turn(state):
     state["factions"][pf]["military_supply"] += supply_income
     log.append(f"【資源結算】金 +{gold_income}（維持 -{gold_cost}）= {net_gold:+d}　軍糧 +{supply_income}")
 
-    # Step 5 — 忠誠度影響（郡年貢 > 30%）
+    # Step 5 — 忠誠度影響（郡年貢 > 30%，影響代官）
     for d in state.get("districts", []):
         c = get_castle_by_id(state, d["castle_id"])
-        if c and c["faction"] == pf and d["nengu_rate"] > 30 and d.get("retainer"):
+        if c and c["faction"] == pf and d["nengu_rate"] > 30 and d.get("daikan"):
             delta = -round((d["nengu_rate"] - 30) * 0.5)
-            r = next((x for x in state["retainers"] if x["id"] == d["retainer"]), None)
+            r = next((x for x in state["retainers"] if x["id"] == d["daikan"]), None)
             if r and r["rank"] != "大名":
                 r["loyalty"] = max(0, min(100, r["loyalty"] + delta))
                 r["loyalty_label"] = loyalty_label(r["loyalty"])

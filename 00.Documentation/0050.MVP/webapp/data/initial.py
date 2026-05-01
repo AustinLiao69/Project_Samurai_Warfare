@@ -190,13 +190,15 @@ INITIAL_STATE = {
         },
     },
 
-    # ── 城（軍事設施）── 守備・等級・位置・鄰接 ─────────────────
+    # ── 城（軍事設施）── 守備・等級・城主・位置・鄰接 ───────────────
+    # chatelain（城主）= 統轄城防的武將（軍事職）
     "castles": [
         # ────────── 尾張國・織田家 ──────────
         {
             "id": "castle_01", "name": "清洲城", "faction": "oda",
             "level": 2, "garrison": 1500, "max_garrison": 2000,
             "province": "尾張國", "is_capital": True, "is_daimyo_home": True,
+            "chatelain": "shibatakatsuie",
             "x": 32, "y": 46,
             "adjacent": ["castle_02", "castle_04", "castle_05"],
             "district_id": "district_01",
@@ -205,6 +207,7 @@ INITIAL_STATE = {
             "id": "castle_02", "name": "小牧山城", "faction": "oda",
             "level": 1, "garrison": 500, "max_garrison": 1000,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
+            "chatelain": "niwachoja",
             "x": 24, "y": 28,
             "adjacent": ["castle_01", "castle_03"],
             "district_id": "district_02",
@@ -213,6 +216,7 @@ INITIAL_STATE = {
             "id": "castle_03", "name": "犬山城", "faction": "oda",
             "level": 1, "garrison": 500, "max_garrison": 1000,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
+            "chatelain": "sakumanobumori",
             "x": 16, "y": 14,
             "adjacent": ["castle_02"],
             "district_id": "district_03",
@@ -221,6 +225,7 @@ INITIAL_STATE = {
             "id": "castle_04", "name": "津島湊", "faction": "oda",
             "level": 1, "garrison": 200, "max_garrison": 500,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
+            "chatelain": "hayashihidesada",
             "x": 14, "y": 60,
             "adjacent": ["castle_01", "castle_05"],
             "district_id": "district_04",
@@ -229,6 +234,7 @@ INITIAL_STATE = {
             "id": "castle_05", "name": "那古野城", "faction": "oda",
             "level": 1, "garrison": 300, "max_garrison": 1000,
             "province": "尾張國", "is_capital": False, "is_daimyo_home": False,
+            "chatelain": "kinoshita",
             "x": 38, "y": 64,
             "adjacent": ["castle_01", "castle_04", "castle_08"],
             "district_id": "district_05",
@@ -238,6 +244,7 @@ INITIAL_STATE = {
             "id": "castle_06", "name": "岡崎城", "faction": "imagawa",
             "level": 3, "garrison": 2000, "max_garrison": 4000,
             "province": "三河國", "is_capital": True, "is_daimyo_home": False,
+            "chatelain": "okabemotonobu",
             "x": 68, "y": 50,
             "adjacent": ["castle_07", "castle_08"],
             "district_id": "district_06",
@@ -246,6 +253,7 @@ INITIAL_STATE = {
             "id": "castle_07", "name": "吉田城", "faction": "imagawa",
             "level": 2, "garrison": 1000, "max_garrison": 2000,
             "province": "三河國", "is_capital": False, "is_daimyo_home": False,
+            "chatelain": None,
             "x": 80, "y": 36,
             "adjacent": ["castle_06"],
             "district_id": "district_07",
@@ -254,13 +262,15 @@ INITIAL_STATE = {
             "id": "castle_08", "name": "大高城", "faction": "imagawa",
             "level": 1, "garrison": 800, "max_garrison": 1000,
             "province": "三河國", "is_capital": False, "is_daimyo_home": False,
+            "chatelain": "matsudasira",
             "x": 50, "y": 70,
             "adjacent": ["castle_05", "castle_06"],
             "district_id": "district_08",
         },
     ],
 
-    # ── 郡（行政設施）── 設施・年貢・家臣分封・農業 ──────────────
+    # ── 郡（行政設施）── 設施・年貢・代官・農業 ───────────────────
+    # daikan（代官）= 代理郡務的行政官（行政職，與城主分開）
     "districts": [
         # ────────── 尾張國・織田家 ──────────
         {
@@ -268,7 +278,7 @@ INITIAL_STATE = {
             "type": "軍事郡", "facility_name": "兵營",
             "facility_level": 2, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "shibatakatsuie",
+            "nengu_rate": 20, "daikan": "shibatakatsuie",
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
@@ -276,7 +286,7 @@ INITIAL_STATE = {
             "type": "軍事郡", "facility_name": "駐屯地",
             "facility_level": 1, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "niwachoja",
+            "nengu_rate": 20, "daikan": "maedatoshiie",
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
@@ -284,7 +294,7 @@ INITIAL_STATE = {
             "type": "軍事郡", "facility_name": "駐屯地",
             "facility_level": 1, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "sakumanobumori",
+            "nengu_rate": 20, "daikan": "sakumanobumori",
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
@@ -292,7 +302,7 @@ INITIAL_STATE = {
             "type": "商業郡", "facility_name": "市集",
             "facility_level": 1, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "hayashihidesada",
+            "nengu_rate": 20, "daikan": "hayashihidesada",
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
@@ -300,7 +310,7 @@ INITIAL_STATE = {
             "type": "商業郡", "facility_name": "市集",
             "facility_level": 1, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 20, "retainer": "takigawakazumasu",
+            "nengu_rate": 20, "daikan": "takigawakazumasu",
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         # ────────── 三河國・今川家 ──────────
@@ -309,7 +319,7 @@ INITIAL_STATE = {
             "type": "軍事郡", "facility_name": "軍陣營",
             "facility_level": 3, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 25, "retainer": "okabemotonobu",
+            "nengu_rate": 25, "daikan": "okabemotonobu",
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
@@ -317,7 +327,7 @@ INITIAL_STATE = {
             "type": "農業郡", "facility_name": "農村",
             "facility_level": 2, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 25, "retainer": None,
+            "nengu_rate": 25, "daikan": None,
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
         {
@@ -325,7 +335,7 @@ INITIAL_STATE = {
             "type": "軍事郡", "facility_name": "駐屯地",
             "facility_level": 1, "facility_max": 3,
             "building": False, "building_turns": 0,
-            "nengu_rate": 25, "retainer": "matsudasira",
+            "nengu_rate": 25, "daikan": "matsudasira",
             "corps_id": None, "farmer_pending": 0, "farmer_incoming": 0,
         },
     ],

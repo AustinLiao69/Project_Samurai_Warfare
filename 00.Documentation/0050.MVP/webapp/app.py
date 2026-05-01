@@ -59,15 +59,14 @@ def get_advisor():
 def merged_view(castle):
     """
     合併城（軍事）與郡（行政）為單一 view dict，供模板使用。
-    城與郡屬性均可直接存取；重疊的 id/name 使用城的值，
-    額外提供 district_id、district_name、district_type。
+    城與郡屬性均可直接存取；重疊的 id/name 使用城的值。
+    城主（chatelain）為城的軍事職，代官（daikan）為郡的行政職。
     """
     d = get_district_for_castle(castle["id"])
     v = dict(castle)
     if d:
-        # 行政屬性（從郡覆蓋）
         for key in ("type", "facility_name", "facility_level", "facility_max",
-                    "building", "building_turns", "nengu_rate", "retainer",
+                    "building", "building_turns", "nengu_rate", "daikan",
                     "corps_id", "farmer_pending", "farmer_incoming"):
             v[key] = d.get(key)
         v["district_id"]   = d["id"]
@@ -180,6 +179,7 @@ def politics():
     outputs = {c["id"]: calc_district_output(get_district_for_castle(c["id"]) or c)
                for c in pcs}
     advisor = get_advisor()
+    leader_map = {r["id"]: r for r in s["retainers"]}
     return render_template("politics.html",
         state=s,
         categories=POLITICS_CATEGORIES,
@@ -189,6 +189,8 @@ def politics():
         player_castles=views,
         outputs=outputs,
         corps_map={c["id"]: get_corps_for_castle(c["id"]) for c in pcs},
+        corps_list=s.get("corps", []),
+        leader_map=leader_map,
         active="politics",
         oda=_oda_summary(),
     )
@@ -291,18 +293,21 @@ def api_castle(cid):
     s   = gs()
     pf  = s["player_faction"]
     d   = get_district_for_castle(cid)
-    retainer  = get_retainer(d["retainer"]) if d and d.get("retainer") else None
-    spec      = next_upgrade_spec(d) if d else None
-    output    = calc_district_output(d) if d else {"gold": 0, "supply": 0}
+    chatelain  = get_retainer(c.get("chatelain")) if c.get("chatelain") else None
+    daikan     = get_retainer(d["daikan"]) if d and d.get("daikan") else None
+    spec       = next_upgrade_spec(d) if d else None
+    output     = calc_district_output(d) if d else {"gold": 0, "supply": 0}
     corps_info = get_corps_for_castle(cid)
     v = merged_view(c)
     return jsonify({
-        "castle": v,               # merged view（城+郡屬性均有）
-        "district": d or {},       # 純郡物件
+        "castle": v,
+        "district": d or {},
         "castle_name":    c["name"],
         "castle_faction": c["faction"],
         "castle_data":    c,
-        "retainer":       retainer,
+        "chatelain":      chatelain,   # 城主（軍事職）
+        "daikan":         daikan,      # 代官（行政職）
+        "retainer":       daikan,      # backward compat alias
         "next_upgrade":   spec,
         "output":         output,
         "player_gold":    s["factions"][pf]["gold"],
