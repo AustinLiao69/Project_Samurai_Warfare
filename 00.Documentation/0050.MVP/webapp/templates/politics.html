@@ -91,6 +91,18 @@
         <div class="corps-card-name">🏴 {{ corps.name }}　<span style="font-size:0.8rem;color:var(--text-dim)">首領：{{ leader.name if leader else '—' }}</span></div>
       </div>
 
+      <!-- 家臣團方針 -->
+      <div class="corps-info-row">
+        <span class="corps-info-label">方針</span>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <select id="pol-policy-{{ corps.id }}" class="corps-input" style="max-width:150px">
+            <option value="軍事優先" {{ 'selected' if corps.get('policy','軍事優先')=='軍事優先' }}>⚔ 軍事優先</option>
+            <option value="內政優先" {{ 'selected' if corps.get('policy','')=='內政優先' }}>📋 內政優先</option>
+          </select>
+          <button class="tc-btn" onclick="polSetCorpsPolicy('{{ corps.id }}')">設定</button>
+        </div>
+      </div>
+
       <!-- 目前轄城 -->
       <div class="corps-info-row" style="align-items:flex-start">
         <span class="corps-info-label">轄城（{{ corps.territories | length }}）</span>
@@ -146,6 +158,16 @@
 
 {% block scripts %}
 <script>
+async function polSetCorpsPolicy(corpsId) {
+  const sel = document.getElementById(`pol-policy-${corpsId}`);
+  const policy = sel.value;
+  const data = await fetch(`/api/corps/${corpsId}/policy`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ policy })
+  }).then(r => r.json());
+  showToast(data.msg || (data.ok ? '方針已更新' : '操作失敗'));
+}
+
 async function polAddCorpsTerritory(corpsId) {
   const sel = document.getElementById(`pol-add-territory-${corpsId}`);
   const castleId = sel.value;

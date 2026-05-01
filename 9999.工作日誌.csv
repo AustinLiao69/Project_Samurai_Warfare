@@ -83,3 +83,8 @@ MM       DD      Description        Progress
 5       1       [FB7] 城主/代官分離：castle 資料新增 chatelain（城主・軍事），district 資料新增 daikan（代官・行政），initial.py/logic.py/app.py/base.html 全數更新      Done
 5       1       CSS 補齊：.map-inner（position:absolute;inset:0）、.castle-chatelain（金色小字）、完整 .retainer-list/.retainer-row/.rr-* 條列樣式      Done
 5       1       SeniorPM.md 建立：記錄每次任務應做事項（5項標準 SOP）      Done
+5       1       [FB1-第五次] 武將能力名稱中文化：initial.py 所有 eval 鍵名由英文（military/strategy/politics/charisma）改為中文（軍事/智謀/政治/魅力），retainers.html badge 顯示 軍/智/政/魅 前綴      Done
+5       1       [FB2-第五次] 新增 10 位織田家武將：森可成/池田恒興/稻葉一鐵（家老）、坂井政尚/岡本良勝/水野忠重/淺野長政/村井貞勝/金森長近/蒲生賢秀（部將），含完整 eval 數值      Done
+5       1       [FB3-第五次] 任命選項：家臣頁新增「任命」分頁（城主/代官任命 UI），API POST /api/castle/<id>/chatelain 與 POST /api/district/<id>/daikan      Done
+5       1       [FB4-第五次] 家臣團方針：retainers.html 家臣團管理分頁與 politics.html 分配城郡區塊均新增 軍事優先/內政優先 下拉選單，API POST /api/corps/<id>/policy      Done
+5       1       [FB5-第五次] 只顯示玩家勢力：app.py retainers() 路由強制 faction_id=player_faction，移除 今川家 tab 切換器      Done

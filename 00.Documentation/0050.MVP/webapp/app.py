@@ -220,10 +220,11 @@ def intel():
 
 @app.route("/retainers")
 @app.route("/retainers/<faction_id>")
-def retainers(faction_id="oda"):
+def retainers(faction_id=None):
     s  = gs()
     pf = s["player_faction"]
-    ret = [r for r in s["retainers"] if r["faction"] == faction_id]
+    faction_id = pf                                  # ← 只顯示玩家勢力
+    ret = [r for r in s["retainers"] if r["faction"] == pf]
     cmap = corps_map_for_retainers()
 
     direct_retainers = [r for r in s["retainers"]
@@ -231,11 +232,14 @@ def retainers(faction_id="oda"):
                         and r["rank"] in ("宿老", "家老")
                         and r.get("corps_id") is None]
 
-    # 可分封城堡（郡）：我方、非大名本城
-    player_castles_for_corps = [
-        merged_view(c) for c in s["castles"]
-        if c["faction"] == pf and not c.get("is_daimyo_home", False)
-    ]
+    # 我方城堡（含 merged view）
+    player_castles_merged = [merged_view(c) for c in s["castles"] if c["faction"] == pf]
+    # 我方郡（含城名）
+    player_districts = []
+    for d in s.get("districts", []):
+        c = get_castle(d["castle_id"])
+        if c and c["faction"] == pf:
+            player_districts.append({**d, "castle_name": c["name"]})
 
     corps_list = s.get("corps", [])
     leader_map = {r["id"]: r for r in s["retainers"]}
@@ -246,7 +250,8 @@ def retainers(faction_id="oda"):
         loyalty_color=loyalty_color, active="retainers",
         corps_map=cmap, corps_list=corps_list,
         direct_retainers=direct_retainers,
-        player_castles=player_castles_for_corps,
+        player_castles=player_castles_merged,
+        player_districts=player_districts,
         leader_map=leader_map, tab=tab,
         oda=_oda_summary(),
     )

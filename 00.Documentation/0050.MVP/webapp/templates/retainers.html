@@ -9,6 +9,8 @@
     <div class="tab-switcher">
       <a href="{{ url_for('retainers') }}?tab=retainers"
          class="tab-btn {{ 'active' if tab == 'retainers' }}">家臣一覽</a>
+      <a href="{{ url_for('retainers') }}?tab=appoint"
+         class="tab-btn {{ 'active' if tab == 'appoint' }}">任命</a>
       <a href="{{ url_for('retainers') }}?tab=corps"
          class="tab-btn {{ 'active' if tab == 'corps' }}">家臣團管理</a>
     </div>
@@ -16,14 +18,7 @@
     <!-- ══ 家臣一覽 tab ══ -->
     {% if tab == 'retainers' %}
 
-    <div class="faction-switcher">
-      <a href="{{ url_for('retainers', faction_id='oda') }}?tab=retainers"
-         class="{{ 'active' if faction_id == 'oda' }}">織田家</a>
-      <a href="{{ url_for('retainers', faction_id='imagawa') }}?tab=retainers"
-         class="{{ 'active' if faction_id == 'imagawa' }}">今川家</a>
-    </div>
-
-    <!-- 條列式家臣表 -->
+    <!-- 條列式家臣表（僅玩家勢力） -->
     <div class="retainer-list">
       {% for r in retainers %}
       {% set cm = corps_map.get(r.id) %}
@@ -53,16 +48,79 @@
           {% endif %}
         </div>
 
-        <!-- 右：能力評價（A/B/C/D/S 等，不顯示數值） -->
+        <!-- 右：能力評價（0011 文件：軍/智/政/魅 + 等級，不顯示數值） -->
         <div class="rr-right">
           {% if r.eval %}
           <div class="rr-eval">
             {% for cat, pair in r.eval.items() %}
-            <span class="rc-eval-badge grade-{{ pair[0] }}" title="{{ pair[1] }}">{{ cat[:1] }}{{ pair[0] }}</span>
+            <span class="rc-eval-badge grade-{{ pair[0] }}" title="{{ cat }}：{{ pair[1] }}">{{ cat[:1] }}{{ pair[0] }}</span>
             {% endfor %}
           </div>
           {% endif %}
         </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ══ 任命 tab ══ -->
+    {% elif tab == 'appoint' %}
+
+    <div style="margin-bottom:1rem;font-size:0.82rem;color:var(--text-dim);line-height:1.7">
+      ▸ <strong>城主（軍事）</strong>：統率城防兵力，負責軍事行動的代表武將。<br>
+      ▸ <strong>代官（行政）</strong>：代理郡縣事務，負責年貢與設施管理的行政官。<br>
+      ▸ 同一武將可同時身兼城主與代官。
+    </div>
+
+    <!-- 城主任命 -->
+    <div class="section-title">🏯 城主任命（軍事）</div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1.5rem">
+      {% for c in player_castles %}
+      <div class="retainer-row" style="gap:1rem">
+        <div style="min-width:90px;font-weight:700;font-size:0.88rem">{{ c.name }}</div>
+        <div style="flex:1;font-size:0.8rem;color:var(--text-dim)">
+          現任：
+          {% if c.chatelain %}
+            {% for r in state.retainers %}{% if r.id == c.chatelain %}<span style="color:var(--gold)">{{ r.name }}</span>（{{ r.rank }}）{% endif %}{% endfor %}
+          {% else %}（空缺）{% endif %}
+        </div>
+        <select id="chatelain-{{ c.id }}" class="corps-input" style="flex:1;max-width:200px">
+          <option value="">— 選擇城主 —</option>
+          <option value="">（撤除城主）</option>
+          {% for r in retainers %}
+          {% if r.rank != '大名' %}
+          <option value="{{ r.id }}" {{ 'selected' if r.id == c.chatelain }}>{{ r.name }}（{{ r.rank }}）</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+        <button class="tc-btn" style="white-space:nowrap"
+                onclick="appointChatelain('{{ c.id }}')">任命城主</button>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- 代官任命 -->
+    <div class="section-title">📋 代官任命（行政）</div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem">
+      {% for d in player_districts %}
+      <div class="retainer-row" style="gap:1rem">
+        <div style="min-width:90px;font-weight:700;font-size:0.88rem">{{ d.name }}<span style="font-size:0.7rem;color:var(--text-dim);margin-left:0.3rem">（{{ d.castle_name }}）</span></div>
+        <div style="flex:1;font-size:0.8rem;color:var(--text-dim)">
+          現任：
+          {% if d.daikan %}
+            {% for r in state.retainers %}{% if r.id == d.daikan %}<span style="color:var(--gold)">{{ r.name }}</span>（{{ r.rank }}）{% endif %}{% endfor %}
+          {% else %}（空缺）{% endif %}
+        </div>
+        <select id="daikan-{{ d.id }}" class="corps-input" style="flex:1;max-width:200px">
+          <option value="">— 選擇代官 —</option>
+          <option value="">（撤除代官）</option>
+          {% for r in retainers %}
+          {% if r.rank != '大名' %}
+          <option value="{{ r.id }}" {{ 'selected' if r.id == d.daikan }}>{{ r.name }}（{{ r.rank }}）</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+        <button class="tc-btn" style="white-space:nowrap"
+                onclick="appointDaikan('{{ d.id }}')">任命代官</button>
       </div>
       {% endfor %}
     </div>
@@ -111,6 +169,18 @@
       <div class="corps-info-row">
         <span class="corps-info-label">首領</span>
         <span class="corps-info-val">{{ leader.name if leader else '—' }}（{{ leader.rank if leader else '' }}）</span>
+      </div>
+
+      <!-- 家臣團方針 -->
+      <div class="corps-info-row">
+        <span class="corps-info-label">方針</span>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <select id="policy-{{ corps.id }}" class="corps-input" style="max-width:150px">
+            <option value="軍事優先" {{ 'selected' if corps.get('policy','軍事優先')=='軍事優先' }}>⚔ 軍事優先</option>
+            <option value="內政優先" {{ 'selected' if corps.get('policy','')=='內政優先' }}>📋 內政優先</option>
+          </select>
+          <button class="tc-btn" onclick="setCorpsPolicy('{{ corps.id }}')">設定</button>
+        </div>
       </div>
 
       <!-- 成員管理 -->
@@ -205,6 +275,42 @@
 
 {% block scripts %}
 <script>
+/* ── 任命：城主 ── */
+async function appointChatelain(castleId) {
+  const sel = document.getElementById(`chatelain-${castleId}`);
+  const retainerId = sel.value;
+  const data = await fetch(`/api/castle/${castleId}/chatelain`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ retainer_id: retainerId || null })
+  }).then(r => r.json());
+  showToast(data.msg || (data.ok ? '任命成功' : '操作失敗'));
+  if (data.ok) setTimeout(() => location.reload(), 800);
+}
+
+/* ── 任命：代官 ── */
+async function appointDaikan(districtId) {
+  const sel = document.getElementById(`daikan-${districtId}`);
+  const retainerId = sel.value;
+  const data = await fetch(`/api/district/${districtId}/daikan`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ retainer_id: retainerId || null })
+  }).then(r => r.json());
+  showToast(data.msg || (data.ok ? '任命成功' : '操作失敗'));
+  if (data.ok) setTimeout(() => location.reload(), 800);
+}
+
+/* ── 家臣團方針 ── */
+async function setCorpsPolicy(corpsId) {
+  const sel = document.getElementById(`policy-${corpsId}`);
+  const policy = sel.value;
+  const data = await fetch(`/api/corps/${corpsId}/policy`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ policy })
+  }).then(r => r.json());
+  showToast(data.msg || (data.ok ? '方針已更新' : '操作失敗'));
+}
+
+/* ── 家臣團：成立 ── */
 async function createCorps() {
   const name   = document.getElementById('corps-name-input').value.trim();
   const leader = document.getElementById('corps-leader-select').value;
@@ -218,6 +324,7 @@ async function createCorps() {
   if (data.ok) setTimeout(() => location.reload(), 800);
 }
 
+/* ── 家臣團：解散 ── */
 async function dissolveCorps(id, name) {
   if (!confirm(`確定解散「${name}」？此操作無法撤回。`)) return;
   const data = await fetch(`/api/corps/${id}`, { method: 'DELETE' }).then(r => r.json());
@@ -225,6 +332,7 @@ async function dissolveCorps(id, name) {
   if (data.ok) setTimeout(() => location.reload(), 800);
 }
 
+/* ── 家臣團：成員 ── */
 async function addCorpsMember(corpsId) {
   const sel = document.getElementById(`add-member-${corpsId}`);
   const retainerId = sel.value;
@@ -247,6 +355,7 @@ async function removeCorpsMember(corpsId, retainerId, name) {
   if (data.ok) setTimeout(() => location.reload(), 800);
 }
 
+/* ── 家臣團：轄地 ── */
 async function addCorpsTerritory(corpsId) {
   const sel = document.getElementById(`add-territory-${corpsId}`);
   const castleId = sel.value;
