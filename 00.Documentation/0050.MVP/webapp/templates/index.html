@@ -126,7 +126,12 @@
       <div class="map-canvas">
         {% for castle in state.castles %}
         {% set chatelain_r = namespace(name='') %}
-        {% for r in state.retainers %}{% if r.id == castle.chatelain %}{% set chatelain_r.name = r.name %}{% endif %}{% endfor %}
+        {% set d = district_map.get(castle.id) %}
+        {% set daikan_r = namespace(name='') %}
+        {% for r in state.retainers %}
+          {% if r.id == castle.chatelain %}{% set chatelain_r.name = r.name %}{% endif %}
+          {% if d and r.id == d.daikan %}{% set daikan_r.name = r.name %}{% endif %}
+        {% endfor %}
         <div class="castle-node {{ castle.faction }}"
              style="left:{{ castle.x }}%; top:{{ castle.y }}%"
              data-castle="{{ castle.id }}"
@@ -141,6 +146,14 @@
           <div class="castle-chatelain">城主：{{ chatelain_r.name }}</div>
           {% endif %}
           <div class="castle-garrison">{{ castle.garrison }} 人</div>
+          <!-- 郡資訊 -->
+          {% if d %}
+          <div class="castle-district-bar">
+            <span class="cdb-name">{{ d.name }}</span>
+            <span class="cdb-type">{{ d.type }}</span>
+            {% if daikan_r.name %}<span class="cdb-daikan">代官：{{ daikan_r.name }}</span>{% endif %}
+          </div>
+          {% endif %}
           <div class="castle-click-hint">▶ 點擊管理</div>
         </div>
         {% endfor %}

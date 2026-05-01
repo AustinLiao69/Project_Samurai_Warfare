@@ -593,6 +593,32 @@ def api_corps_territories(corps_id):
             d["corps_id"] = None
         return jsonify({"ok": True, "msg": f"{castle['name']} 已從「{corps['name']}」撤回"})
 
+# ── API — 升遷 ────────────────────────────────────
+
+RANK_ORDER = ["組頭", "部將", "家老", "宿老"]   # 大名 不可升
+
+@app.route("/api/retainer/<retainer_id>/promote", methods=["POST"])
+def api_promote_retainer(retainer_id):
+    global _state
+    s  = gs()
+    pf = s["player_faction"]
+    r  = get_retainer(retainer_id)
+    if not r or r["faction"] != pf:
+        return jsonify({"ok": False, "msg": "無效的武將"})
+    if r["rank"] == "大名":
+        return jsonify({"ok": False, "msg": "大名無法升遷"})
+    try:
+        idx = RANK_ORDER.index(r["rank"])
+    except ValueError:
+        return jsonify({"ok": False, "msg": f"階級「{r['rank']}」不在升遷序列中"})
+    if idx >= len(RANK_ORDER) - 1:
+        return jsonify({"ok": False, "msg": f"{r['name']} 已是最高武家階級（宿老）"})
+    old_rank = r["rank"]
+    new_rank = RANK_ORDER[idx + 1]
+    r["rank"] = new_rank
+    _state["log"].insert(0, f"【升遷】{r['name']}：{old_rank} → {new_rank}")
+    return jsonify({"ok": True, "msg": f"{r['name']} 升遷為【{new_rank}】"})
+
 # ── API — 任命（城主 / 代官）────────────────────────
 
 @app.route("/api/castle/<castle_id>/chatelain", methods=["POST"])

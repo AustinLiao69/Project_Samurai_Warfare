@@ -48,14 +48,23 @@
           {% endif %}
         </div>
 
-        <!-- 右：能力評價（0011 文件：軍/智/政/魅 + 等級，不顯示數值） -->
+        <!-- 右：能力評價（0011 文件：軍/智/政/魅，只顯示詞彙） -->
         <div class="rr-right">
           {% if r.eval %}
           <div class="rr-eval">
             {% for cat, pair in r.eval.items() %}
-            <span class="rc-eval-badge grade-{{ pair[0] }}" title="{{ cat }}：{{ pair[1] }}">{{ cat[:1] }}{{ pair[0] }}</span>
+            <span class="rc-eval-badge grade-{{ pair[0] }}" title="{{ cat }}（{{ pair[0] }}）">{{ pair[1] }}</span>
             {% endfor %}
           </div>
+          {% endif %}
+          <!-- 升遷按鈕（大名不可升） -->
+          {% set RANK_NEXT = {'組頭':'部將','部將':'家老','家老':'宿老'} %}
+          {% if r.rank in RANK_NEXT %}
+          <button class="rr-promote-btn"
+                  onclick="promoteRetainer('{{ r.id }}','{{ r.name }}','{{ r.rank }}','{{ RANK_NEXT[r.rank] }}')"
+                  title="升遷為{{ RANK_NEXT[r.rank] }}">
+            ▲ 升遷→{{ RANK_NEXT[r.rank] }}
+          </button>
           {% endif %}
         </div>
       </div>
@@ -275,6 +284,16 @@
 
 {% block scripts %}
 <script>
+/* ── 升遷 ── */
+async function promoteRetainer(id, name, fromRank, toRank) {
+  if (!confirm(`確定將「${name}」由【${fromRank}】升遷為【${toRank}】？`)) return;
+  const data = await fetch(`/api/retainer/${id}/promote`, {
+    method: 'POST', headers: {'Content-Type':'application/json'}
+  }).then(r => r.json());
+  showToast(data.msg || (data.ok ? '升遷成功' : '操作失敗'));
+  if (data.ok) setTimeout(() => location.reload(), 800);
+}
+
 /* ── 任命：城主 ── */
 async function appointChatelain(castleId) {
   const sel = document.getElementById(`chatelain-${castleId}`);

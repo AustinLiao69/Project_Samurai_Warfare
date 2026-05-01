@@ -125,6 +125,14 @@ body {
 .castle-click-hint { font-size: 0.6rem; color: var(--gold); opacity: 0; transition: opacity 0.2s; }
 .castle-node:hover .castle-click-hint { opacity: 1; }
 .capital-star { position: absolute; top: -10px; left: -10px; font-size: 0.8rem; color: var(--gold); }
+/* 城節點下方的郡資訊列 */
+.castle-district-bar {
+  border-top: 1px solid rgba(255,255,255,0.1); margin-top: 0.2rem; padding-top: 0.2rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.05rem; width: 100%;
+}
+.cdb-name { font-size: 0.62rem; color: #c8a415; white-space: nowrap; font-weight: 600; }
+.cdb-type { font-size: 0.55rem; color: #7f8c8d; white-space: nowrap; }
+.cdb-daikan { font-size: 0.55rem; color: #3498db; white-space: nowrap; }
 
 /* district dots — secondary indicators; labels now clickable */
 .district-dot {
@@ -751,8 +759,8 @@ body {
 .rr-location { font-size: 0.7rem; color: var(--text-dim); white-space: nowrap; }
 .rr-mid { min-width: 80px; text-align: center; }
 .rr-loyalty { font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
-.rr-right { display: flex; align-items: center; }
-.rr-eval { display: flex; gap: 0.2rem; flex-wrap: nowrap; }
+.rr-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; min-width: 220px; }
+.rr-eval { display: flex; gap: 0.2rem; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ── RETAINER CARD GRID（舊版，保留供其他頁使用）── */
 .retainer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 1rem; }
@@ -776,7 +784,14 @@ body {
 .rc-stat-bar-fill { height: 3px; background: var(--gold); border-radius: 2px; }
 .rc-stat-val { font-size: 0.65rem; color: var(--text-main); }
 .rc-eval-row { display: flex; gap: 0.2rem; flex-wrap: wrap; }
-.rc-eval-badge { font-size: 0.65rem; padding: 0.05rem 0.3rem; border-radius: 2px; }
+.rc-eval-badge { font-size: 0.6rem; padding: 0.08rem 0.4rem; border-radius: 2px; white-space: nowrap; }
+/* 升遷按鈕 */
+.rr-promote-btn {
+  margin-top: 0.3rem; font-size: 0.62rem; padding: 0.12rem 0.5rem; border-radius: 2px;
+  background: rgba(39,174,96,0.12); border: 1px solid #27ae60; color: #27ae60;
+  cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+}
+.rr-promote-btn:hover { background: rgba(39,174,96,0.25); }
 
 /* ── TAB SWITCHER ────────────────────────────────── */
 .tab-switcher { display: flex; gap: 0.4rem; margin-bottom: 1rem; }

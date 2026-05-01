@@ -88,3 +88,6 @@ MM       DD      Description        Progress
 5       1       [FB3-第五次] 任命選項：家臣頁新增「任命」分頁（城主/代官任命 UI），API POST /api/castle/<id>/chatelain 與 POST /api/district/<id>/daikan      Done
 5       1       [FB4-第五次] 家臣團方針：retainers.html 家臣團管理分頁與 politics.html 分配城郡區塊均新增 軍事優先/內政優先 下拉選單，API POST /api/corps/<id>/policy      Done
 5       1       [FB5-第五次] 只顯示玩家勢力：app.py retainers() 路由強制 faction_id=player_faction，移除 今川家 tab 切換器      Done
+5       1       [FB1-第六次] 武將評價去除ABC字母：retainers.html badge 改為只顯示詞彙（pair[1]），grade-X class 保留色彩，title 屬性保留等級說明      Done
+5       1       [FB2-第六次] 地圖顯示郡：index.html 每個城節點下方新增 .castle-district-bar（郡名/郡類型/代官），從 district_map 取得資料      Done
+5       1       [FB3-第六次] 升遷指令：retainers.html 家臣一覽新增 ▲ 升遷→ 按鈕（組頭→部將→家老→宿老），app.py 新增 POST /api/retainer/<id>/promote API      Done
