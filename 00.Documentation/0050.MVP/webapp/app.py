@@ -588,6 +588,63 @@ def api_corps_territories(corps_id):
             d["corps_id"] = None
         return jsonify({"ok": True, "msg": f"{castle['name']} 已從「{corps['name']}」撤回"})
 
+# ── API — 任命（城主 / 代官）────────────────────────
+
+@app.route("/api/castle/<castle_id>/chatelain", methods=["POST"])
+def api_appoint_chatelain(castle_id):
+    global _state
+    data = request.json or {}
+    retainer_id = data.get("retainer_id")
+    s  = gs()
+    pf = s["player_faction"]
+    c  = get_castle(castle_id)
+    if not c or c["faction"] != pf:
+        return jsonify({"ok": False, "msg": "無效的城"})
+    r = get_retainer(retainer_id) if retainer_id else None
+    if retainer_id and (not r or r["faction"] != pf):
+        return jsonify({"ok": False, "msg": "無效的武將"})
+    c["chatelain"] = retainer_id or None
+    name = r["name"] if r else "（空缺）"
+    _state["log"].insert(0, f"【任命】{c['name']} 城主 → {name}")
+    return jsonify({"ok": True, "msg": f"{c['name']} 城主已任命為 {name}"})
+
+@app.route("/api/district/<district_id>/daikan", methods=["POST"])
+def api_appoint_daikan(district_id):
+    global _state
+    data = request.json or {}
+    retainer_id = data.get("retainer_id")
+    s  = gs()
+    pf = s["player_faction"]
+    d  = get_district(district_id)
+    if not d:
+        return jsonify({"ok": False, "msg": "無效的郡"})
+    c = get_castle(d["castle_id"])
+    if not c or c["faction"] != pf:
+        return jsonify({"ok": False, "msg": "只能任命我方領地的代官"})
+    r = get_retainer(retainer_id) if retainer_id else None
+    if retainer_id and (not r or r["faction"] != pf):
+        return jsonify({"ok": False, "msg": "無效的武將"})
+    d["daikan"] = retainer_id or None
+    name = r["name"] if r else "（空缺）"
+    _state["log"].insert(0, f"【任命】{d['name']} 代官 → {name}")
+    return jsonify({"ok": True, "msg": f"{d['name']} 代官已任命為 {name}"})
+
+# ── API — 家臣團方針 ─────────────────────────────────
+
+@app.route("/api/corps/<corps_id>/policy", methods=["POST"])
+def api_corps_policy(corps_id):
+    global _state
+    data   = request.json or {}
+    policy = data.get("policy", "軍事優先")
+    if policy not in ("軍事優先", "內政優先"):
+        return jsonify({"ok": False, "msg": "無效的方針"})
+    s = gs()
+    corps = next((c for c in s.get("corps", []) if c["id"] == corps_id), None)
+    if not corps:
+        return jsonify({"ok": False, "msg": "找不到家臣團"})
+    corps["policy"] = policy
+    return jsonify({"ok": True, "msg": f"「{corps['name']}」方針已設為：{policy}"})
+
 # ── API — State / Save / Reset ──────────────────────
 
 @app.route("/api/state")
