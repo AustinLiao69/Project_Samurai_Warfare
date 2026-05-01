@@ -74,3 +74,12 @@ MM       DD      Description        Progress
 4       30      [FB5] 重命名 + 新增 tab：nav 改為 地圖/政務/軍事/家臣/情報/評定；新增 /military（徵兵/出兵）、/intel（佔位符） 頁面      Done
 4       30      [FB7] 更多城郡武將：8城（5 Oda + 3 Imagawa）、8 Oda 武將（+佐久間信盛/瀧川一益/林秀貞）、完整 stat 屬性      Done
 4       30      [FB8] 大名本城保護：清洲城 is_daimyo_home=True，/api/corps/<id>/territories 和家臣團分配均阻擋，modal 顯示 👑 提示     Done
+5       1       [FB1] 家臣一覽改條列式：新增 .retainer-list/.retainer-row/.rr-* CSS，移除數值顯示，以評價等級 badge（A/B/C/D/S）取代      Done
+5       1       [FB2] 地圖拖拉功能：map-inner wrapper div + JS initMapDrag()（mousedown/mousemove/mouseup + touch 等效），城節點點擊防誤觸      Done
+5       1       [FB3] 家臣團成員分配 UI：家臣團管理分頁新增「指派家臣入團」下拉選單 + 加入/移除按鈕，呼叫 /api/corps/<id>/members      Done
+5       1       [FB4] 家臣團轄地鎖定通知更新：明確列出鎖定項目（年貢・郡政升級・城防徵兵・出兵），措辭改為「軍事行動一律鎖定」     Done
+5       1       [FB5] 政務移除評定路徑：politics.html 移除評定會議 banner/快捷欄，政務聚焦於領地治理      Done
+5       1       [FB6] 政務新增分配城郡功能：新增「分配城郡給家臣團」區塊，app.py politics 路由傳入 corps_list 與 leader_map      Done
+5       1       [FB7] 城主/代官分離：castle 資料新增 chatelain（城主・軍事），district 資料新增 daikan（代官・行政），initial.py/logic.py/app.py/base.html 全數更新      Done
+5       1       CSS 補齊：.map-inner（position:absolute;inset:0）、.castle-chatelain（金色小字）、完整 .retainer-list/.retainer-row/.rr-* 條列樣式      Done
+5       1       SeniorPM.md 建立：記錄每次任務應做事項（5項標準 SOP）      Done
